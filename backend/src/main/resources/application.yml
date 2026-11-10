@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: erp-backend
+  profiles:
+    active: dev
+  jpa:
+    open-in-view: false
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+# Springdoc OpenAPI Swagger Configuration
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+  show-actuator: true
+
+# JWT Configuration
+app:
+  jwt:
+    # 256-bit secret key in base64 (dev default)
+    secret: dGhpc0lzQVZlcnlTZWN1cmVTZWNyZXRLZXlGb3JFUlBNdWx0aWVtcHJlc2EyMDI2ISE=
+    expiration-ms: 86400000 # 24 hours
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized

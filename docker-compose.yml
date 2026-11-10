@@ -1,0 +1,24 @@
+services:
+  oracle-db:
+    image: gvenzl/oracle-free:latest
+    container_name: erp-oracle-free
+    restart: unless-stopped
+    ports:
+      - "1521:1521"
+    environment:
+      - ORACLE_PASSWORD=oracle_admin_password
+      - APP_USER=erp_user
+      - APP_USER_PASSWORD=erp_password123
+      - ORACLE_DATABASE=FREEPDB1
+    volumes:
+      - oracle_data:/opt/oracle/oradata
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+volumes:
+  oracle_data:
+    driver: local
