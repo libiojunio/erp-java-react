@@ -1,4 +1,4 @@
-﻿# Script auxiliar de execução local do ERP Multiempresa
+# Script auxiliar de execução local do ERP Multiempresa
 
 param (
     [Parameter(Position=0)]

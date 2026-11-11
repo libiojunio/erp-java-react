@@ -1,0 +1,5 @@
+wsl 3.0.5
+java 21.0.13
+docker 4.99
+	usuario: libioj
+	
