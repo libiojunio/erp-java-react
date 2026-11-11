@@ -1,5 +1,21 @@
 wsl 3.0.5
+	senha: 3
+	
+	maven 3.9.12-1
+	sudo apt update && sudo apt install -y maven
+	
+	sudo apt update
+	sudo apt install -y openjdk-21-jdk
+
+	sudo update-alternatives --set java /usr/lib/jvm/java-21-openjdk-amd64/bin/java
+	sudo update-alternatives --set javac /usr/lib/jvm/java-21-openjdk-amd64/bin/javac
+
+	echo 'export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64' >> ~/.bashrc
+	echo 'export PATH=$JAVA_HOME/bin:$PATH' >> ~/.bashrcsource ~/.bashrc
 java 21.0.13
 docker 4.99
 	usuario: libioj
+banco de dados:
+	erp_user
+	erp_password123
 	
