@@ -16,7 +16,7 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 
 export const DashboardPage: React.FC = () => {
-  const { usuario, empresaAtiva } = useAuth();
+  const { usuario, empresaAtiva, empresas } = useAuth();
   const [backendStatus, setBackendStatus] = useState<'UP' | 'DOWN' | 'CHECKING'>('CHECKING');
 
   useEffect(() => {
@@ -88,7 +88,7 @@ export const DashboardPage: React.FC = () => {
                   Empresas Habilitadas
                 </Typography>
                 <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                  {usuario?.empresas?.length || 1}
+                  {empresas?.length || 1}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
                   Multiempresa ativo

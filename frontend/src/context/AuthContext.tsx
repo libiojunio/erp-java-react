@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { api } from '../services/api';
 
 export interface Empresa {
   id: number;
   razaoSocial: string;
-  nomeFantasia: string;
+  nomeFantasia?: string;
   cnpj: string;
 }
 
@@ -12,17 +13,31 @@ export interface Usuario {
   nome: string;
   email: string;
   perfis: string[];
+}
+
+interface LoginResponseData {
+  token: string;
+  tipo: string;
+  usuario: Usuario;
+  empresaAtiva: Empresa;
   empresas: Empresa[];
+}
+
+interface ApiResponse<T> {
+  sucesso: boolean;
+  mensagem: string;
+  dados: T;
 }
 
 interface AuthContextType {
   usuario: Usuario | null;
   empresaAtiva: Empresa | null;
+  empresas: Empresa[];
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (token: string, usuario: Usuario, empresaId?: number) => void;
+  login: (email: string, senha: string) => Promise<void>;
   logout: () => void;
-  selecionarEmpresa: (empresaId: number) => void;
+  selecionarEmpresa: (empresaId: number) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,57 +45,61 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [empresaAtiva, setEmpresaAtiva] = useState<Empresa | null>(null);
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Inicializa e valida sessão existente
   useEffect(() => {
-    const storedUser = localStorage.getItem('erp_user');
     const storedToken = localStorage.getItem('erp_token');
-    const storedEmpresaId = localStorage.getItem('erp_empresa_ativa_id');
 
-    if (storedUser && storedToken) {
-      try {
-        const parsedUser: Usuario = JSON.parse(storedUser);
-        setUsuario(parsedUser);
-
-        if (parsedUser.empresas && parsedUser.empresas.length > 0) {
-          const active = parsedUser.empresas.find(
-            (e) => e.id === Number(storedEmpresaId),
-          ) || parsedUser.empresas[0];
-          setEmpresaAtiva(active);
-          localStorage.setItem('erp_empresa_ativa_id', active.id.toString());
-        }
-      } catch (err) {
-        console.error('Erro ao recuperar sessão:', err);
-      }
-    } else {
-      // Cria sessão de demonstração inicial para teste no front (Fase 0)
-      const mockEmpresas: Empresa[] = [
-        { id: 1, razaoSocial: 'EMPRESA MATRIZ EXEMPLO LTDA', nomeFantasia: 'Matriz ERP', cnpj: '12345678000195' },
-        { id: 2, razaoSocial: 'FILIAL SAO PAULO COMERCIO LTDA', nomeFantasia: 'Filial SP', cnpj: '98765432000188' },
-      ];
-      const mockUser: Usuario = {
-        id: 1,
-        nome: 'Administrador Master',
-        email: 'admin@erp.com',
-        perfis: ['ROLE_ADMIN'],
-        empresas: mockEmpresas,
-      };
-      setUsuario(mockUser);
-      setEmpresaAtiva(mockEmpresas[0]);
-      localStorage.setItem('erp_empresa_ativa_id', '1');
+    if (!storedToken) {
+      setIsLoading(false);
+      return;
     }
-    setIsLoading(false);
+
+    // Valida o token contra o endpoint /api/auth/me do backend
+    api.get<ApiResponse<LoginResponseData>>('/auth/me')
+      .then((res) => {
+        const data = res.data.dados;
+        setUsuario(data.usuario);
+        setEmpresaAtiva(data.empresaAtiva);
+        setEmpresas(data.empresas || []);
+        localStorage.setItem('erp_user', JSON.stringify(data.usuario));
+        if (data.empresaAtiva) {
+          localStorage.setItem('erp_empresa_ativa_id', data.empresaAtiva.id.toString());
+        }
+      })
+      .catch(() => {
+        // Token inválido ou expirado
+        localStorage.removeItem('erp_token');
+        localStorage.removeItem('erp_user');
+        localStorage.removeItem('erp_empresa_ativa_id');
+        setUsuario(null);
+        setEmpresaAtiva(null);
+        setEmpresas([]);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, []);
 
-  const login = (token: string, user: Usuario, empresaId?: number) => {
-    localStorage.setItem('erp_token', token);
-    localStorage.setItem('erp_user', JSON.stringify(user));
-    setUsuario(user);
+  const login = async (email: string, senha: string) => {
+    setIsLoading(true);
+    try {
+      const res = await api.post<ApiResponse<LoginResponseData>>('/auth/login', { email, senha });
+      const data = res.data.dados;
 
-    const active = user.empresas.find((e) => e.id === empresaId) || user.empresas[0];
-    if (active) {
-      setEmpresaAtiva(active);
-      localStorage.setItem('erp_empresa_ativa_id', active.id.toString());
+      localStorage.setItem('erp_token', data.token);
+      localStorage.setItem('erp_user', JSON.stringify(data.usuario));
+      if (data.empresaAtiva) {
+        localStorage.setItem('erp_empresa_ativa_id', data.empresaAtiva.id.toString());
+      }
+
+      setUsuario(data.usuario);
+      setEmpresaAtiva(data.empresaAtiva);
+      setEmpresas(data.empresas || []);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -90,14 +109,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('erp_empresa_ativa_id');
     setUsuario(null);
     setEmpresaAtiva(null);
+    setEmpresas([]);
+    window.location.href = '/login';
   };
 
-  const selecionarEmpresa = (empresaId: number) => {
-    if (!usuario) return;
-    const selecionada = usuario.empresas.find((e) => e.id === empresaId);
-    if (selecionada) {
-      setEmpresaAtiva(selecionada);
-      localStorage.setItem('erp_empresa_ativa_id', selecionada.id.toString());
+  const selecionarEmpresa = async (empresaId: number) => {
+    try {
+      const res = await api.post<ApiResponse<LoginResponseData>>('/auth/empresa-ativa', { empresaId });
+      const data = res.data.dados;
+
+      // Atualiza token JWT contendo o novo empresaId
+      localStorage.setItem('erp_token', data.token);
+      if (data.empresaAtiva) {
+        localStorage.setItem('erp_empresa_ativa_id', data.empresaAtiva.id.toString());
+      }
+
+      setUsuario(data.usuario);
+      setEmpresaAtiva(data.empresaAtiva);
+      setEmpresas(data.empresas || []);
+    } catch (err) {
+      console.error('Erro ao trocar empresa ativa:', err);
+      throw err;
     }
   };
 
@@ -106,6 +138,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         usuario,
         empresaAtiva,
+        empresas,
         isAuthenticated: !!usuario,
         isLoading,
         login,
