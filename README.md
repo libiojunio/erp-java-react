@@ -19,7 +19,27 @@ erp-java-react/
 
 ## 🚀 Como Executar
 
-### 1. Pré-requisitos
+### Inicialização Rápida (Script Único)
+
+Você pode iniciar o backend e o frontend simultaneamente com um único comando:
+
+* **No Windows (Prompt / Explorer)**: Dê um duplo-clique no arquivo `iniciar-projeto.bat` ou execute:
+  ```cmd
+  .\iniciar-projeto.bat
+  ```
+* **No PowerShell**:
+  ```powershell
+  .\iniciar-projeto.ps1
+  ```
+* **No WSL / Linux**:
+  ```bash
+  chmod +x iniciar-projeto.sh
+  ./iniciar-projeto.sh
+  ```
+
+---
+
+### Execução Manual Passo a Passo
 - **Java 21** (JDK 21 LTS - Eclipse Temurin ou Amazon Corretto)
 - **Maven 3.9+** (ou Maven Wrapper `./mvnw`)
 - **Node.js 20+** e **npm**

@@ -8,6 +8,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
+import { dataGridPtBR } from '../utils/dataGridPtBR';
 
 export const EmpresasPage: React.FC = () => {
   const columns: GridColDef[] = [
@@ -64,6 +65,12 @@ export const EmpresasPage: React.FC = () => {
         <DataGrid
           rows={rows}
           columns={columns}
+          localeText={dataGridPtBR}
+          slotProps={{
+            pagination: {
+              labelRowsPerPage: 'Registros por página:',
+            },
+          }}
           initialState={{
             pagination: { paginationModel: { pageSize: 10 } },
           }}

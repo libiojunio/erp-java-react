@@ -45,5 +45,12 @@ export const theme = createTheme({
         },
       },
     },
+    MuiTablePagination: {
+      defaultProps: {
+        labelRowsPerPage: 'Registros por página:',
+        labelDisplayedRows: ({ from, to, count }) =>
+          `${from}–${to} de ${count !== -1 ? count : `mais de ${to}`}`,
+      },
+    },
   },
 });

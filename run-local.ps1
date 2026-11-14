@@ -1,48 +1,51 @@
-# Script auxiliar de execução local do ERP Multiempresa
+# Script auxiliar de execução local do ERP Multiempresa (via WSL Ubuntu)
 
 param (
     [Parameter(Position=0)]
-    [ValidateSet("db-up", "db-down", "backend", "frontend", "check-env")]
-    [string]$Action = "check-env"
+    [ValidateSet("all", "backend", "frontend", "db-up", "db-down", "check-env")]
+    [string]$Action = "all"
 )
 
+$ProjectDir = $PSScriptRoot
+if (-not $ProjectDir) { $ProjectDir = Get-Location }
+
+try {
+    $wslDir = (wsl -d Ubuntu wslpath -a "$ProjectDir" 2>$null).Trim()
+} catch {
+    $wslDir = ""
+}
+
+if (-not $wslDir) {
+    $driveLetter = $ProjectDir.Substring(0, 1).ToLower()
+    $wslDir = "/mnt/$driveLetter" + $ProjectDir.Substring(2).Replace("\", "/")
+}
+
 switch ($Action) {
+    "all" {
+        & "$PSScriptRoot\iniciar-projeto.ps1"
+    }
     "db-up" {
-        Write-Host "Subindo container do Oracle Database Free..." -ForegroundColor Cyan
-        docker compose up -d
+        Write-Host "Subindo container do Oracle Database Free via WSL Ubuntu..." -ForegroundColor Cyan
+        wsl -d Ubuntu -e bash -lic "cd '$wslDir' && docker compose up -d"
     }
     "db-down" {
-        Write-Host "Encerrando container do Oracle Database Free..." -ForegroundColor Cyan
-        docker compose down
+        Write-Host "Encerrando container do Oracle Database Free via WSL Ubuntu..." -ForegroundColor Cyan
+        wsl -d Ubuntu -e bash -lic "cd '$wslDir' && docker compose down"
     }
     "backend" {
-        Write-Host "Iniciando backend Spring Boot..." -ForegroundColor Cyan
-        Set-Location backend
-        mvn spring-boot:run
+        Write-Host "Iniciando backend Spring Boot via WSL Ubuntu..." -ForegroundColor Cyan
+        wsl -d Ubuntu -e bash -lic "cd '$wslDir/backend' && mvn spring-boot:run"
     }
     "frontend" {
-        Write-Host "Iniciando frontend Vite..." -ForegroundColor Cyan
-        Set-Location frontend
-        npm run dev
+        Write-Host "Iniciando frontend Vite via WSL Ubuntu..." -ForegroundColor Cyan
+        wsl -d Ubuntu -e bash -lic "cd '$wslDir/frontend' && npm run dev"
     }
     "check-env" {
-        Write-Host "=== Verificação do Ambiente de Desenvolvimento ===" -ForegroundColor Yellow
-        
-        Write-Host "`n1. Git:" -NoNewline
-        try { & git --version } catch { Write-Host " Não encontrado" -ForegroundColor Red }
-
-        Write-Host "2. Node.js:" -NoNewline
-        try { & node -v } catch { Write-Host " Não encontrado" -ForegroundColor Red }
-
-        Write-Host "3. Java (JDK 21):" -NoNewline
-        try { & java -version } catch { Write-Host " Não configurado no PATH" -ForegroundColor Red }
-
-        Write-Host "4. Maven:" -NoNewline
-        try { & mvn -version } catch { Write-Host " Não configurado no PATH" -ForegroundColor Red }
-
-        Write-Host "5. Docker:" -NoNewline
-        try { & docker --version } catch { Write-Host " Não configurado no PATH" -ForegroundColor Red }
-
-        Write-Host "`nPara instruções de instalação do Java 21 e Docker, consulte: docs/guia-ambiente.md" -ForegroundColor Green
+        Write-Host "=== Verificação do Ambiente no WSL (-d Ubuntu) ===" -ForegroundColor Yellow
+        wsl -d Ubuntu -e bash -lic "echo -n '1. Git: ' && git --version || echo 'Não encontrado'"
+        wsl -d Ubuntu -e bash -lic "echo -n '2. Node.js: ' && node -v || echo 'Não encontrado'"
+        wsl -d Ubuntu -e bash -lic "echo -n '3. Java: ' && java -version 2>&1 | head -n 1 || echo 'Não encontrado'"
+        wsl -d Ubuntu -e bash -lic "echo -n '4. Maven: ' && mvn -version 2>&1 | head -n 1 || echo 'Não encontrado'"
+        wsl -d Ubuntu -e bash -lic "echo -n '5. Docker: ' && docker --version || echo 'Não encontrado'"
     }
 }

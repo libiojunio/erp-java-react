@@ -9,6 +9,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { useAuth } from '../context/AuthContext';
+import { dataGridPtBR } from '../utils/dataGridPtBR';
 
 export const ClientesPage: React.FC = () => {
   const { empresaAtiva } = useAuth();
@@ -76,6 +77,12 @@ export const ClientesPage: React.FC = () => {
         <DataGrid
           rows={rows}
           columns={columns}
+          localeText={dataGridPtBR}
+          slotProps={{
+            pagination: {
+              labelRowsPerPage: 'Registros por página:',
+            },
+          }}
           initialState={{
             pagination: { paginationModel: { pageSize: 10 } },
           }}
