@@ -42,6 +42,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { dataGridPtBR } from '../utils/dataGridPtBR';
 import { api } from '../services/api';
+import { FileUploadDropzone, ArquivoInfo } from '../components/common/FileUploadDropzone';
 import {
   ESTADOS_BR,
   formatarCpf,
@@ -83,6 +84,8 @@ interface ClienteForm {
   dataNascimento: string;
   email: string;
   telefone: string;
+  arquivoId?: number | null;
+  arquivo?: ArquivoInfo | null;
   enderecos: EndereçoForm[];
   contatos: ContatoForm[];
 }
@@ -99,6 +102,8 @@ interface ClienteItem {
   email?: string;
   telefone?: string;
   situacao: string;
+  arquivoId?: number | null;
+  arquivo?: ArquivoInfo | null;
   enderecos?: EndereçoForm[];
   contatos?: ContatoForm[];
 }
@@ -112,6 +117,8 @@ const FORMULARIO_INICIAL: ClienteForm = {
   dataNascimento: '',
   email: '',
   telefone: '',
+  arquivoId: null,
+  arquivo: null,
   enderecos: [],
   contatos: [],
 };
@@ -182,6 +189,7 @@ export const ClientesPage: React.FC = () => {
         documento: limparDigitos(formData.documento),
         telefone: limparDigitos(formData.telefone),
         dataNascimento: formData.dataNascimento ? formData.dataNascimento : null,
+        arquivoId: formData.arquivoId,
         enderecos: formData.enderecos.map((end) => ({
           ...end,
           cep: limparDigitos(end.cep),
@@ -258,6 +266,8 @@ export const ClientesPage: React.FC = () => {
       dataNascimento: '',
       email: '',
       telefone: '',
+      arquivoId: null,
+      arquivo: null,
       enderecos: [
         {
           tipo: 'PRINCIPAL',
@@ -305,6 +315,8 @@ export const ClientesPage: React.FC = () => {
       dataNascimento: clienteCompleto.dataNascimento ? clienteCompleto.dataNascimento.substring(0, 10) : '',
       email: clienteCompleto.email || '',
       telefone: formatarTelefone(clienteCompleto.telefone || ''),
+      arquivoId: clienteCompleto.arquivoId || null,
+      arquivo: clienteCompleto.arquivo || null,
       enderecos: (clienteCompleto.enderecos || []).map((end) => ({
         id: end.id,
         tipo: end.tipo || 'PRINCIPAL',
@@ -819,6 +831,22 @@ export const ClientesPage: React.FC = () => {
                   label="Telefone / WhatsApp"
                   value={formData.telefone}
                   onChange={(e) => setFormData({ ...formData, telefone: formatarTelefone(e.target.value) })}
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <FileUploadDropzone
+                  label="Documento / Anexo do Cliente (PDF, Imagem, TXT)"
+                  arquivoId={formData.arquivoId}
+                  arquivoInicial={formData.arquivo}
+                  onArquivoAlterado={(arq) => {
+                    if (arq) {
+                      setFormData((prev) => ({ ...prev, arquivoId: arq.id, arquivo: arq }));
+                    } else {
+                      setFormData((prev) => ({ ...prev, arquivoId: null, arquivo: null }));
+                    }
+                  }}
+                  disabled={salvarMutation.isPending}
                 />
               </Grid>
             </Grid>

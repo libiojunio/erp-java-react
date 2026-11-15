@@ -35,6 +35,9 @@ class EmpresaServiceTest {
     @Mock
     private UsuarioEmpresaRepository usuarioEmpresaRepository;
 
+    @Mock
+    private com.erp.arquivo.service.ArquivoService arquivoService;
+
     @InjectMocks
     private EmpresaService empresaService;
 

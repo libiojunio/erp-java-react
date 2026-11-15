@@ -53,4 +53,7 @@ public class Empresa extends AuditableEntity {
     @Column(nullable = false, length = 20)
     @Builder.Default
     private String situacao = "ATIVO";
+
+    @Column(name = "arquivo_id")
+    private Long arquivoId;
 }

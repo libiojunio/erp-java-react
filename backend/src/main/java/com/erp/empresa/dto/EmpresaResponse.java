@@ -1,5 +1,6 @@
 package com.erp.empresa.dto;
 
+import com.erp.arquivo.dto.ArquivoDto;
 import com.erp.empresa.domain.Empresa;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,13 +28,21 @@ public class EmpresaResponse {
     private String cidade;
     private String uf;
     private String situacao;
+    private Long arquivoId;
+    private ArquivoDto arquivo;
     private LocalDateTime criadoEm;
     private String criadoPor;
     private LocalDateTime alteradoEm;
     private String alteradoPor;
 
     public static EmpresaResponse fromEntity(Empresa empresa) {
-        if (empresa == null) return null;
+        return fromEntity(empresa, null);
+    }
+
+    public static EmpresaResponse fromEntity(Empresa empresa, ArquivoDto arquivoDto) {
+        if (empresa == null) {
+            return null;
+        }
         return EmpresaResponse.builder()
                 .id(empresa.getId())
                 .razaoSocial(empresa.getRazaoSocial())
@@ -48,6 +57,8 @@ public class EmpresaResponse {
                 .cidade(empresa.getCidade())
                 .uf(empresa.getUf())
                 .situacao(empresa.getSituacao())
+                .arquivoId(empresa.getArquivoId())
+                .arquivo(arquivoDto)
                 .criadoEm(empresa.getCriadoEm())
                 .criadoPor(empresa.getCriadoPor())
                 .alteradoEm(empresa.getAlteradoEm())

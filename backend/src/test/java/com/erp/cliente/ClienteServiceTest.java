@@ -29,6 +29,9 @@ class ClienteServiceTest {
     @Mock
     private ClienteRepository clienteRepository;
 
+    @Mock
+    private com.erp.arquivo.service.ArquivoService arquivoService;
+
     @InjectMocks
     private ClienteService clienteService;
 

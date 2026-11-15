@@ -1,5 +1,7 @@
 package com.erp.cliente.service;
 
+import com.erp.arquivo.dto.ArquivoDto;
+import com.erp.arquivo.service.ArquivoService;
 import com.erp.cliente.domain.Cliente;
 import com.erp.cliente.domain.ClienteContato;
 import com.erp.cliente.domain.ClienteEndereco;
@@ -27,6 +29,7 @@ import java.util.stream.Collectors;
 public class ClienteService {
 
     private final ClienteRepository clienteRepository;
+    private final ArquivoService arquivoService;
 
     @Transactional(readOnly = true)
     public Page<ClienteResponse> listarPaginado(String termo, String situacao, Pageable pageable) {
@@ -50,14 +53,14 @@ public class ClienteService {
         log.debug("Pesquisando clientes da empresa ID {}: termo={}, situacao={}", empresaId, termoBusca, situacaoFiltro);
 
         return clienteRepository.pesquisarClientes(empresaId, termoBusca, termoLimpo, situacaoFiltro, pageable)
-                .map(ClienteResponse::fromEntity);
+                .map(this::carregarResponse);
     }
 
     @Transactional(readOnly = true)
     public List<ClienteResponse> listarTodos() {
         Long empresaId = obterEmpresaAtivaId();
         return clienteRepository.findByEmpresaId(empresaId).stream()
-                .map(ClienteResponse::fromEntity)
+                .map(this::carregarResponse)
                 .collect(Collectors.toList());
     }
 
@@ -67,7 +70,7 @@ public class ClienteService {
         Cliente cliente = clienteRepository.findWithDetailsByIdAndEmpresaId(id, empresaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cliente não encontrado com ID: " + id));
 
-        return ClienteResponse.fromEntity(cliente);
+        return carregarResponse(cliente);
     }
 
     @Transactional
@@ -107,6 +110,7 @@ public class ClienteService {
                 .dataNascimento(request.getDataNascimento())
                 .email(email)
                 .telefone(telefone)
+                .arquivoId(request.getArquivoId())
                 .situacao("ATIVO")
                 .build();
 
@@ -126,7 +130,7 @@ public class ClienteService {
 
         Cliente salvo = clienteRepository.save(cliente);
         log.info("Cliente criado com sucesso: ID={}, Nome={}, EmpresaID={}", salvo.getId(), salvo.getNomeRazaoSocial(), empresaId);
-        return ClienteResponse.fromEntity(salvo);
+        return carregarResponse(salvo);
     }
 
     @Transactional
@@ -169,6 +173,8 @@ public class ClienteService {
             cliente.setTelefone(null);
         }
 
+        cliente.setArquivoId(request.getArquivoId());
+
         // Atualizar endereços (orphanRemoval gerencia a exclusão dos que não estão mais presentes)
         cliente.getEnderecos().clear();
         if (request.getEnderecos() != null) {
@@ -189,7 +195,7 @@ public class ClienteService {
 
         Cliente atualizado = clienteRepository.save(cliente);
         log.info("Cliente atualizado com sucesso: ID={}, EmpresaID={}", atualizado.getId(), empresaId);
-        return ClienteResponse.fromEntity(atualizado);
+        return carregarResponse(atualizado);
     }
 
     @Transactional
@@ -201,7 +207,22 @@ public class ClienteService {
         cliente.setSituacao(novaSituacao.toUpperCase().trim());
         Cliente salvo = clienteRepository.save(cliente);
         log.info("Situação do cliente ID={} alterada para: {}", id, salvo.getSituacao());
-        return ClienteResponse.fromEntity(salvo);
+        return carregarResponse(salvo);
+    }
+
+    private ClienteResponse carregarResponse(Cliente cliente) {
+        if (cliente == null) {
+            return null;
+        }
+        ArquivoDto arquivoDto = null;
+        if (cliente.getArquivoId() != null) {
+            try {
+                arquivoDto = arquivoService.buscarDtoPorId(cliente.getArquivoId());
+            } catch (Exception e) {
+                log.warn("Arquivo ID {} não encontrado para cliente ID {}", cliente.getArquivoId(), cliente.getId());
+            }
+        }
+        return ClienteResponse.fromEntity(cliente, arquivoDto);
     }
 
     private void validarDadosCliente(ClienteRequest request, Long clienteId, Long empresaId) {

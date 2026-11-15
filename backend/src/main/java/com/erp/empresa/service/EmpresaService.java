@@ -1,5 +1,7 @@
 package com.erp.empresa.service;
 
+import com.erp.arquivo.dto.ArquivoDto;
+import com.erp.arquivo.service.ArquivoService;
 import com.erp.comum.exception.BusinessException;
 import com.erp.comum.exception.ResourceNotFoundException;
 import com.erp.comum.validation.CnpjValidator;
@@ -31,18 +33,19 @@ public class EmpresaService {
     private final EmpresaRepository empresaRepository;
     private final UsuarioRepository usuarioRepository;
     private final UsuarioEmpresaRepository usuarioEmpresaRepository;
+    private final ArquivoService arquivoService;
 
     @Transactional(readOnly = true)
     public Page<EmpresaResponse> listar(String filtro, String situacao, Pageable pageable) {
         log.info("Listando empresas com filtro: '{}', situacao: '{}'", filtro, situacao);
         return empresaRepository.buscarComFiltros(filtro, situacao, pageable)
-                .map(EmpresaResponse::fromEntity);
+                .map(this::carregarResponse);
     }
 
     @Transactional(readOnly = true)
     public List<EmpresaResponse> listarTodas() {
         return empresaRepository.findAll().stream()
-                .map(EmpresaResponse::fromEntity)
+                .map(this::carregarResponse)
                 .collect(Collectors.toList());
     }
 
@@ -50,7 +53,7 @@ public class EmpresaService {
     public EmpresaResponse buscarPorId(Long id) {
         Empresa empresa = empresaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Empresa não encontrada com ID: " + id));
-        return EmpresaResponse.fromEntity(empresa);
+        return carregarResponse(empresa);
     }
 
     @Transactional
@@ -92,6 +95,7 @@ public class EmpresaService {
                 .bairro(request.getBairro())
                 .cidade(request.getCidade())
                 .uf(uf)
+                .arquivoId(request.getArquivoId())
                 .situacao("ATIVO")
                 .build();
 
@@ -101,7 +105,7 @@ public class EmpresaService {
         // Vincula a nova empresa ao usuário logado para que ele possa acessá-la imediatamente
         vincularAoUsuarioLogado(empresa);
 
-        return EmpresaResponse.fromEntity(empresa);
+        return carregarResponse(empresa);
     }
 
     @Transactional
@@ -148,10 +152,12 @@ public class EmpresaService {
             empresa.setUf(null);
         }
 
+        empresa.setArquivoId(request.getArquivoId());
+
         empresa = empresaRepository.save(empresa);
         log.info("Empresa atualizada com sucesso ID: {}", empresa.getId());
 
-        return EmpresaResponse.fromEntity(empresa);
+        return carregarResponse(empresa);
     }
 
     @Transactional
@@ -167,7 +173,22 @@ public class EmpresaService {
         empresa = empresaRepository.save(empresa);
         log.info("Situação da empresa ID {} alterada para: {}", empresa.getId(), empresa.getSituacao());
 
-        return EmpresaResponse.fromEntity(empresa);
+        return carregarResponse(empresa);
+    }
+
+    private EmpresaResponse carregarResponse(Empresa empresa) {
+        if (empresa == null) {
+            return null;
+        }
+        ArquivoDto arquivoDto = null;
+        if (empresa.getArquivoId() != null) {
+            try {
+                arquivoDto = arquivoService.buscarDtoPorId(empresa.getArquivoId());
+            } catch (Exception e) {
+                log.warn("Arquivo ID {} não encontrado para empresa ID {}", empresa.getArquivoId(), empresa.getId());
+            }
+        }
+        return EmpresaResponse.fromEntity(empresa, arquivoDto);
     }
 
     private String normalizarCnpj(String cnpj) {

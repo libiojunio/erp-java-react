@@ -53,6 +53,9 @@ public class Cliente extends AuditableEntity {
     @Builder.Default
     private String situacao = "ATIVO";
 
+    @Column(name = "arquivo_id")
+    private Long arquivoId;
+
     @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     @Builder.Default

@@ -1,5 +1,6 @@
 package com.erp.cliente.dto;
 
+import com.erp.arquivo.dto.ArquivoDto;
 import com.erp.cliente.domain.Cliente;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -29,6 +30,8 @@ public class ClienteResponse {
     private String email;
     private String telefone;
     private String situacao;
+    private Long arquivoId;
+    private ArquivoDto arquivo;
     private LocalDateTime criadoEm;
     private String criadoPor;
     private LocalDateTime alteradoEm;
@@ -41,7 +44,13 @@ public class ClienteResponse {
     private List<ClienteContatoDto> contatos = new ArrayList<>();
 
     public static ClienteResponse fromEntity(Cliente cliente) {
-        if (cliente == null) return null;
+        return fromEntity(cliente, null);
+    }
+
+    public static ClienteResponse fromEntity(Cliente cliente, ArquivoDto arquivoDto) {
+        if (cliente == null) {
+            return null;
+        }
 
         List<ClienteEnderecoDto> enderecosDto = new ArrayList<>();
         if (cliente.getEnderecos() != null) {
@@ -69,6 +78,8 @@ public class ClienteResponse {
                 .email(cliente.getEmail())
                 .telefone(cliente.getTelefone())
                 .situacao(cliente.getSituacao())
+                .arquivoId(cliente.getArquivoId())
+                .arquivo(arquivoDto)
                 .criadoEm(cliente.getCriadoEm())
                 .criadoPor(cliente.getCriadoPor())
                 .alteradoEm(cliente.getAlteradoEm())

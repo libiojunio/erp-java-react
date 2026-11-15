@@ -38,6 +38,8 @@ public class ClienteRequest {
 
     private String telefone;
 
+    private Long arquivoId;
+
     @Valid
     @Builder.Default
     private List<ClienteEnderecoDto> enderecos = new ArrayList<>();

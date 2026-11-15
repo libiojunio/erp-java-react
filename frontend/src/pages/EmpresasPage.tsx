@@ -27,6 +27,7 @@ import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { dataGridPtBR } from '../utils/dataGridPtBR';
+import { FileUploadDropzone, ArquivoInfo } from '../components/common/FileUploadDropzone';
 
 interface EmpresaItem {
   id: number;
@@ -42,6 +43,8 @@ interface EmpresaItem {
   cidade?: string;
   uf?: string;
   situacao: string;
+  arquivoId?: number | null;
+  arquivo?: ArquivoInfo | null;
 }
 
 const ESTADOS_BR = [
@@ -97,6 +100,8 @@ export const EmpresasPage: React.FC = () => {
     bairro: '',
     cidade: '',
     uf: 'SP',
+    arquivoId: null as number | null,
+    arquivo: null as ArquivoInfo | null,
   });
   const [initialFormData, setInitialFormData] = useState<typeof formData | null>(null);
   const [formErro, setFormErro] = useState<string | null>(null);
@@ -215,6 +220,8 @@ export const EmpresasPage: React.FC = () => {
       bairro: '',
       cidade: '',
       uf: 'SP',
+      arquivoId: null as number | null,
+      arquivo: null as ArquivoInfo | null,
     };
     setFormData(novoForm);
     setInitialFormData(novoForm);
@@ -236,6 +243,8 @@ export const EmpresasPage: React.FC = () => {
       bairro: empresa.bairro || '',
       cidade: empresa.cidade || '',
       uf: empresa.uf || 'SP',
+      arquivoId: empresa.arquivoId || null,
+      arquivo: empresa.arquivo || null,
     };
     setFormData(editForm);
     setInitialFormData(editForm);
@@ -267,7 +276,8 @@ export const EmpresasPage: React.FC = () => {
     formData.complemento.trim() !== initialFormData.complemento.trim() ||
     formData.bairro.trim() !== initialFormData.bairro.trim() ||
     formData.cidade.trim() !== initialFormData.cidade.trim() ||
-    formData.uf !== initialFormData.uf
+    formData.uf !== initialFormData.uf ||
+    formData.arquivoId !== initialFormData.arquivoId
   );
 
   // Busca automática de endereço por CEP (ViaCEP)
@@ -543,6 +553,22 @@ export const EmpresasPage: React.FC = () => {
                   <MenuItem key={uf} value={uf}>{uf}</MenuItem>
                 ))}
               </TextField>
+            </Grid>
+
+            <Grid item xs={12}>
+              <FileUploadDropzone
+                label="Logotipo / Anexo da Empresa (PDF, Imagem, TXT)"
+                arquivoId={formData.arquivoId}
+                arquivoInicial={formData.arquivo}
+                onArquivoAlterado={(arq) => {
+                  if (arq) {
+                    setFormData((prev) => ({ ...prev, arquivoId: arq.id, arquivo: arq }));
+                  } else {
+                    setFormData((prev) => ({ ...prev, arquivoId: null, arquivo: null }));
+                  }
+                }}
+                disabled={salvarMutation.isPending}
+              />
             </Grid>
           </Grid>
         </DialogContent>

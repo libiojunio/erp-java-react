@@ -58,4 +58,7 @@ public class EmpresaRequest {
     @Size(min = 2, max = 2, message = "A UF deve conter exatamente 2 caracteres")
     @Schema(example = "SP")
     private String uf;
+
+    @Schema(description = "ID do arquivo/anexo (logo ou documento da empresa)", example = "1")
+    private Long arquivoId;
 }
