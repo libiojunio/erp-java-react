@@ -72,9 +72,12 @@ public class ClienteController {
             @PathVariable Long id,
             @Valid @RequestBody AlterarSituacaoClienteRequest request) {
         ClienteResponse atualizado = clienteService.alterarSituacao(id, request.getSituacao());
-        String msg = "ATIVO".equalsIgnoreCase(request.getSituacao())
-                ? "Cliente reativado com sucesso!"
-                : "Cliente inativado com sucesso!";
+        String msg;
+        if ("ATIVO".equalsIgnoreCase(request.getSituacao())) {
+            msg = "Cliente reativado com sucesso!";
+        } else {
+            msg = "Cliente inativado com sucesso!";
+        }
         return ResponseEntity.ok(ApiResponse.sucesso(msg, atualizado));
     }
 }

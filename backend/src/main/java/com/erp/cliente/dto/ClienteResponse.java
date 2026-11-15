@@ -43,13 +43,19 @@ public class ClienteResponse {
     public static ClienteResponse fromEntity(Cliente cliente) {
         if (cliente == null) return null;
 
-        List<ClienteEnderecoDto> enderecosDto = cliente.getEnderecos() != null
-                ? cliente.getEnderecos().stream().map(ClienteEnderecoDto::fromEntity).collect(Collectors.toList())
-                : new ArrayList<>();
+        List<ClienteEnderecoDto> enderecosDto = new ArrayList<>();
+        if (cliente.getEnderecos() != null) {
+            enderecosDto = cliente.getEnderecos().stream()
+                    .map(ClienteEnderecoDto::fromEntity)
+                    .collect(Collectors.toList());
+        }
 
-        List<ClienteContatoDto> contatosDto = cliente.getContatos() != null
-                ? cliente.getContatos().stream().map(ClienteContatoDto::fromEntity).collect(Collectors.toList())
-                : new ArrayList<>();
+        List<ClienteContatoDto> contatosDto = new ArrayList<>();
+        if (cliente.getContatos() != null) {
+            contatosDto = cliente.getContatos().stream()
+                    .map(ClienteContatoDto::fromEntity)
+                    .collect(Collectors.toList());
+        }
 
         return ClienteResponse.builder()
                 .id(cliente.getId())

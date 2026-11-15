@@ -203,9 +203,17 @@ export const ClientesPage: React.FC = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['clientes'] });
       setModalOpen(false);
+      let mensagemSucesso = 'Cliente cadastrado com sucesso!';
+      if (clienteEmEdicao) {
+        mensagemSucesso = 'Cliente atualizado com sucesso!';
+      }
+      if (data.mensagem) {
+        mensagemSucesso = data.mensagem;
+      }
+
       setSnackbar({
         open: true,
-        message: data.mensagem || (clienteEmEdicao ? 'Cliente atualizado com sucesso!' : 'Cliente cadastrado com sucesso!'),
+        message: mensagemSucesso,
         severity: 'success',
       });
     },
@@ -464,7 +472,27 @@ export const ClientesPage: React.FC = () => {
 
   // Colunas do DataGrid
   const columns: GridColDef[] = [
-    { field: 'id', headerName: 'ID', width: 70 },
+    {
+      field: 'id',
+      headerName: 'ID',
+      width: 75,
+      align: 'center',
+      headerAlign: 'center',
+      renderCell: (params) => (
+        <Chip
+          label={params.value}
+          size="small"
+          sx={{
+            bgcolor: '#e0e0e0',
+            color: '#424242',
+            fontWeight: 700,
+            borderRadius: '16px',
+            minWidth: 32,
+            height: 24,
+          }}
+        />
+      ),
+    },
     {
       field: 'tipoPessoa',
       headerName: 'Tipo',
@@ -1064,8 +1092,11 @@ export const ClientesPage: React.FC = () => {
             disabled={situacaoMutation.isPending}
             onClick={() => {
               if (clienteAlvoInativacao) {
-                const nova = clienteAlvoInativacao.situacao === 'ATIVO' ? 'INATIVO' : 'ATIVO';
-                situacaoMutation.mutate({ id: clienteAlvoInativacao.id, novaSituacao: nova });
+                let novaSituacao: 'ATIVO' | 'INATIVO' = 'ATIVO';
+                if (clienteAlvoInativacao.situacao === 'ATIVO') {
+                  novaSituacao = 'INATIVO';
+                }
+                situacaoMutation.mutate({ id: clienteAlvoInativacao.id, novaSituacao });
               }
             }}
           >

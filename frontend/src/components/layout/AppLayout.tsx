@@ -1,11 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Toolbar } from '@mui/material';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Navbar } from './Navbar';
 import { Sidebar } from './Sidebar';
 
 export const AppLayout: React.FC = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const location = useLocation();
+
+  // Fecha o menu sempre que uma tela/rota for aberta
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);

@@ -156,9 +156,17 @@ export const EmpresasPage: React.FC = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['empresas'] });
       setModalOpen(false);
+      let mensagemSucesso = 'Empresa cadastrada!';
+      if (empresaEmEdicao) {
+        mensagemSucesso = 'Empresa atualizada!';
+      }
+      if (data.mensagem) {
+        mensagemSucesso = data.mensagem;
+      }
+
       setSnackbar({
         open: true,
-        message: data.mensagem || (empresaEmEdicao ? 'Empresa atualizada!' : 'Empresa cadastrada!'),
+        message: mensagemSucesso,
         severity: 'success',
       });
     },
@@ -241,7 +249,10 @@ export const EmpresasPage: React.FC = () => {
 
   const handleConfirmarInativacao = () => {
     if (!empresaAlvoInativacao) return;
-    const novaSituacao = empresaAlvoInativacao.situacao === 'ATIVO' ? 'INATIVO' : 'ATIVO';
+    let novaSituacao = 'ATIVO';
+    if (empresaAlvoInativacao.situacao === 'ATIVO') {
+      novaSituacao = 'INATIVO';
+    }
     situacaoMutation.mutate({ id: empresaAlvoInativacao.id, novaSituacao });
   };
 
@@ -282,7 +293,27 @@ export const EmpresasPage: React.FC = () => {
   };
 
   const columns: GridColDef[] = [
-    { field: 'id', headerName: 'ID', width: 70 },
+    {
+      field: 'id',
+      headerName: 'ID',
+      width: 75,
+      align: 'center',
+      headerAlign: 'center',
+      renderCell: (params) => (
+        <Chip
+          label={params.value}
+          size="small"
+          sx={{
+            bgcolor: '#e0e0e0',
+            color: '#424242',
+            fontWeight: 700,
+            borderRadius: '16px',
+            minWidth: 32,
+            height: 24,
+          }}
+        />
+      ),
+    },
     {
       field: 'cnpj',
       headerName: 'CNPJ',

@@ -65,18 +65,33 @@ public class EmpresaService {
             throw new BusinessException("Já existe uma empresa cadastrada com o CNPJ informado");
         }
 
+        String nomeFantasia = null;
+        if (request.getNomeFantasia() != null) {
+            nomeFantasia = request.getNomeFantasia().trim();
+        }
+
+        String cep = null;
+        if (request.getCep() != null) {
+            cep = request.getCep().replaceAll("\\D", "");
+        }
+
+        String uf = null;
+        if (request.getUf() != null) {
+            uf = request.getUf().toUpperCase();
+        }
+
         Empresa empresa = Empresa.builder()
                 .razaoSocial(request.getRazaoSocial().trim())
-                .nomeFantasia(request.getNomeFantasia() != null ? request.getNomeFantasia().trim() : null)
+                .nomeFantasia(nomeFantasia)
                 .cnpj(cnpjLimpo)
                 .inscricaoEstadual(request.getInscricaoEstadual())
-                .cep(request.getCep() != null ? request.getCep().replaceAll("\\D", "") : null)
+                .cep(cep)
                 .logradouro(request.getLogradouro())
                 .numero(request.getNumero())
                 .complemento(request.getComplemento())
                 .bairro(request.getBairro())
                 .cidade(request.getCidade())
-                .uf(request.getUf() != null ? request.getUf().toUpperCase() : null)
+                .uf(uf)
                 .situacao("ATIVO")
                 .build();
 
@@ -105,16 +120,33 @@ public class EmpresaService {
         }
 
         empresa.setRazaoSocial(request.getRazaoSocial().trim());
-        empresa.setNomeFantasia(request.getNomeFantasia() != null ? request.getNomeFantasia().trim() : null);
+
+        if (request.getNomeFantasia() != null) {
+            empresa.setNomeFantasia(request.getNomeFantasia().trim());
+        } else {
+            empresa.setNomeFantasia(null);
+        }
+
         empresa.setCnpj(cnpjLimpo);
         empresa.setInscricaoEstadual(request.getInscricaoEstadual());
-        empresa.setCep(request.getCep() != null ? request.getCep().replaceAll("\\D", "") : null);
+
+        if (request.getCep() != null) {
+            empresa.setCep(request.getCep().replaceAll("\\D", ""));
+        } else {
+            empresa.setCep(null);
+        }
+
         empresa.setLogradouro(request.getLogradouro());
         empresa.setNumero(request.getNumero());
         empresa.setComplemento(request.getComplemento());
         empresa.setBairro(request.getBairro());
         empresa.setCidade(request.getCidade());
-        empresa.setUf(request.getUf() != null ? request.getUf().toUpperCase() : null);
+
+        if (request.getUf() != null) {
+            empresa.setUf(request.getUf().toUpperCase());
+        } else {
+            empresa.setUf(null);
+        }
 
         empresa = empresaRepository.save(empresa);
         log.info("Empresa atualizada com sucesso ID: {}", empresa.getId());

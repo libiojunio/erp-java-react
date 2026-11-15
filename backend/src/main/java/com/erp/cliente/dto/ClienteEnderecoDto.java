@@ -56,16 +56,31 @@ public class ClienteEnderecoDto {
     }
 
     public ClienteEndereco toEntity() {
+        String tipoFormatado = "PRINCIPAL";
+        if (this.tipo != null) {
+            tipoFormatado = this.tipo.toUpperCase();
+        }
+
+        String cepLimpo = "";
+        if (this.cep != null) {
+            cepLimpo = this.cep.replaceAll("\\D", "");
+        }
+
+        String ufFormatada = "";
+        if (this.uf != null) {
+            ufFormatada = this.uf.toUpperCase();
+        }
+
         return ClienteEndereco.builder()
                 .id(this.id)
-                .tipo(this.tipo != null ? this.tipo.toUpperCase() : "PRINCIPAL")
-                .cep(this.cep != null ? this.cep.replaceAll("\\D", "") : "")
+                .tipo(tipoFormatado)
+                .cep(cepLimpo)
                 .logradouro(this.logradouro)
                 .numero(this.numero)
                 .complemento(this.complemento)
                 .bairro(this.bairro)
                 .cidade(this.cidade)
-                .uf(this.uf != null ? this.uf.toUpperCase() : "")
+                .uf(ufFormatada)
                 .build();
     }
 }

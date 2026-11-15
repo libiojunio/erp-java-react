@@ -75,9 +75,12 @@ public class EmpresaController {
             @Valid @RequestBody AlterarSituacaoRequest request
     ) {
         EmpresaResponse response = empresaService.alterarSituacao(id, request.getSituacao());
-        String mensagem = "ATIVO".equalsIgnoreCase(request.getSituacao())
-                ? "Empresa reativada com sucesso"
-                : "Empresa inativada com sucesso";
+        String mensagem;
+        if ("ATIVO".equalsIgnoreCase(request.getSituacao())) {
+            mensagem = "Empresa reativada com sucesso";
+        } else {
+            mensagem = "Empresa inativada com sucesso";
+        }
         return ResponseEntity.ok(ApiResponse.sucesso(mensagem, response));
     }
 }

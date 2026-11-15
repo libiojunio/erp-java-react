@@ -51,13 +51,19 @@ public class JwtService {
     public Long extrairUsuarioId(String token) {
         Claims claims = extrairTodosClaims(token);
         Number id = claims.get("usuarioId", Number.class);
-        return id != null ? id.longValue() : null;
+        if (id != null) {
+            return id.longValue();
+        }
+        return null;
     }
 
     public Long extrairEmpresaId(String token) {
         Claims claims = extrairTodosClaims(token);
         Number id = claims.get("empresaId", Number.class);
-        return id != null ? id.longValue() : null;
+        if (id != null) {
+            return id.longValue();
+        }
+        return null;
     }
 
     @SuppressWarnings("unchecked")
