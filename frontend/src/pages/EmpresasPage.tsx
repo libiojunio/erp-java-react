@@ -17,7 +17,13 @@ import {
   Snackbar,
   CircularProgress,
   MenuItem,
+  Slide,
+  SlideProps,
 } from '@mui/material';
+
+function SlideTransition(props: SlideProps) {
+  return <Slide {...props} direction="left" />;
+}
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
@@ -111,21 +117,11 @@ export const EmpresasPage: React.FC = () => {
     queryKey: ['empresas'],
     queryFn: async () => {
       try {
-        const response = await api.get('/empresas');
+        const response = await api.get('/empresas?sortProperty=id&sortDirection=DESC');
         return response.data.dados || [];
       } catch (err) {
-        // Fallback inicial se backend estiver reiniciando
+        // Fallback inicial se backend estiver reiniciando (ordenado decrescente por ID)
         return [
-          {
-            id: 1,
-            cnpj: '12345678000195',
-            razaoSocial: 'EMPRESA MATRIZ EXEMPLO LTDA',
-            nomeFantasia: 'Matriz ERP',
-            inscricaoEstadual: '110220330110',
-            cidade: 'São Paulo',
-            uf: 'SP',
-            situacao: 'ATIVO',
-          },
           {
             id: 2,
             cnpj: '98765432000188',
@@ -133,6 +129,16 @@ export const EmpresasPage: React.FC = () => {
             nomeFantasia: 'Filial SP',
             inscricaoEstadual: '990880770220',
             cidade: 'Campinas',
+            uf: 'SP',
+            situacao: 'ATIVO',
+          },
+          {
+            id: 1,
+            cnpj: '12345678000195',
+            razaoSocial: 'EMPRESA MATRIZ EXEMPLO LTDA',
+            nomeFantasia: 'Matriz ERP',
+            inscricaoEstadual: '110220330110',
+            cidade: 'São Paulo',
             uf: 'SP',
             situacao: 'ATIVO',
           },
@@ -417,6 +423,7 @@ export const EmpresasPage: React.FC = () => {
             },
           }}
           initialState={{
+            sorting: { sortModel: [{ field: 'id', sort: 'desc' }] },
             pagination: { paginationModel: { pageSize: 10 } },
           }}
           pageSizeOptions={[5, 10, 20]}
@@ -635,9 +642,10 @@ export const EmpresasPage: React.FC = () => {
         open={snackbar.open}
         autoHideDuration={4000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        TransitionComponent={SlideTransition}
       >
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+        <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })} sx={{ width: '100%', boxShadow: 3 }}>
           {snackbar.message}
         </Alert>
       </Snackbar>

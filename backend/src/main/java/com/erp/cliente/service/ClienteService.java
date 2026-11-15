@@ -59,7 +59,7 @@ public class ClienteService {
     @Transactional(readOnly = true)
     public List<ClienteResponse> listarTodos() {
         Long empresaId = obterEmpresaAtivaId();
-        return clienteRepository.findByEmpresaId(empresaId).stream()
+        return clienteRepository.findByEmpresaIdOrderByIdDesc(empresaId).stream()
                 .map(this::carregarResponse)
                 .collect(Collectors.toList());
     }
@@ -173,7 +173,25 @@ public class ClienteService {
             cliente.setTelefone(null);
         }
 
+        Long arquivoAntigoId = cliente.getArquivoId();
         cliente.setArquivoId(request.getArquivoId());
+
+        if (arquivoAntigoId != null) {
+            boolean arquivoFoiAlterado = false;
+            if (request.getArquivoId() == null) {
+                arquivoFoiAlterado = true;
+            } else if (!arquivoAntigoId.equals(request.getArquivoId())) {
+                arquivoFoiAlterado = true;
+            }
+
+            if (arquivoFoiAlterado) {
+                try {
+                    arquivoService.deletar(arquivoAntigoId);
+                } catch (Exception e) {
+                    log.warn("Não foi possível excluir arquivo antigo ID {}: {}", arquivoAntigoId, e.getMessage());
+                }
+            }
+        }
 
         // Atualizar endereços (orphanRemoval gerencia a exclusão dos que não estão mais presentes)
         cliente.getEnderecos().clear();
@@ -208,6 +226,23 @@ public class ClienteService {
         Cliente salvo = clienteRepository.save(cliente);
         log.info("Situação do cliente ID={} alterada para: {}", id, salvo.getSituacao());
         return carregarResponse(salvo);
+    }
+
+    @Transactional
+    public void deletar(Long id) {
+        Long empresaId = obterEmpresaAtivaId();
+        Cliente cliente = clienteRepository.findByIdAndEmpresaId(id, empresaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cliente não encontrado com ID: " + id));
+
+        Long arquivoId = cliente.getArquivoId();
+        cliente.setArquivoId(null);
+        clienteRepository.delete(cliente);
+        log.info("Cliente ID={} da empresa ID={} excluído com sucesso", id, empresaId);
+
+        if (arquivoId != null) {
+            arquivoService.deletar(arquivoId);
+            log.info("Arquivo vinculado ID={} excluído após a remoção do cliente", arquivoId);
+        }
     }
 
     private ClienteResponse carregarResponse(Cliente cliente) {

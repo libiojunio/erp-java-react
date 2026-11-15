@@ -35,8 +35,8 @@ public class EmpresaController {
             @RequestParam(required = false) String situacao,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size,
-            @RequestParam(defaultValue = "razaoSocial") String sortProperty,
-            @RequestParam(defaultValue = "ASC") String sortDirection
+            @RequestParam(defaultValue = "id") String sortProperty,
+            @RequestParam(defaultValue = "DESC") String sortDirection
     ) {
         Sort sort = Sort.by(Sort.Direction.fromString(sortDirection), sortProperty);
         Page<EmpresaResponse> pageResult = empresaService.listar(filtro, situacao, PageRequest.of(page, size, sort));
@@ -82,5 +82,12 @@ public class EmpresaController {
             mensagem = "Empresa inativada com sucesso";
         }
         return ResponseEntity.ok(ApiResponse.sucesso(mensagem, response));
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Exclui uma empresa e seu arquivo vinculado")
+    public ResponseEntity<ApiResponse<Void>> deletar(@PathVariable Long id) {
+        empresaService.deletar(id);
+        return ResponseEntity.ok(ApiResponse.sucesso("Empresa excluída com sucesso", null));
     }
 }

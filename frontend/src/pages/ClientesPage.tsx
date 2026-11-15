@@ -25,7 +25,13 @@ import {
   ToggleButtonGroup,
   ToggleButton,
   InputAdornment,
+  Slide,
+  SlideProps,
 } from '@mui/material';
+
+function SlideTransition(props: SlideProps) {
+  return <Slide {...props} direction="left" />;
+}
 import AddIcon from '@mui/icons-material/Add';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import EditIcon from '@mui/icons-material/Edit';
@@ -161,6 +167,7 @@ export const ClientesPage: React.FC = () => {
       if (filtroTermo.trim()) params.append('termo', filtroTermo.trim());
       if (filtroSituacao !== 'TODOS') params.append('situacao', filtroSituacao);
       params.append('size', '100'); // paginação inicial expansiva
+      params.append('sort', 'id,desc');
 
       try {
         const response = await api.get(`/clientes?${params.toString()}`);
@@ -684,6 +691,7 @@ export const ClientesPage: React.FC = () => {
             },
           }}
           initialState={{
+            sorting: { sortModel: [{ field: 'id', sort: 'desc' }] },
             pagination: { paginationModel: { pageSize: 10 } },
           }}
           pageSizeOptions={[10, 25, 50]}
@@ -1144,9 +1152,10 @@ export const ClientesPage: React.FC = () => {
         open={snackbar.open}
         autoHideDuration={4000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        TransitionComponent={SlideTransition}
       >
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })} sx={{ width: '100%' }}>
+        <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })} sx={{ width: '100%', boxShadow: 3 }}>
           {snackbar.message}
         </Alert>
       </Snackbar>

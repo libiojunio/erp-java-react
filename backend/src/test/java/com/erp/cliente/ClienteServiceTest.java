@@ -154,4 +154,24 @@ class ClienteServiceTest {
         assertEquals(1L, response.getId());
         assertEquals("CLIENTE COM DETALHES", response.getNomeRazaoSocial());
     }
+
+    @Test
+    @DisplayName("Deve deletar cliente e excluir seu arquivo vinculado logo após na mesma chamada")
+    void deveDeletarClienteEArquivoVinculado() {
+        Cliente cliente = Cliente.builder()
+                .id(1L)
+                .empresaId(1L)
+                .tipoPessoa("PJ")
+                .documento("12345678000195")
+                .nomeRazaoSocial("CLIENTE COM ARQUIVO")
+                .arquivoId(99L)
+                .build();
+
+        when(clienteRepository.findByIdAndEmpresaId(1L, 1L)).thenReturn(java.util.Optional.of(cliente));
+
+        clienteService.deletar(1L);
+
+        verify(clienteRepository, times(1)).delete(cliente);
+        verify(arquivoService, times(1)).deletar(99L);
+    }
 }

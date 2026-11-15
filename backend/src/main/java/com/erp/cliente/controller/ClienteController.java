@@ -29,7 +29,7 @@ public class ClienteController {
     public ResponseEntity<ApiResponse<Page<ClienteResponse>>> listarClientes(
             @RequestParam(required = false) String termo,
             @RequestParam(required = false) String situacao,
-            @PageableDefault(size = 10, sort = "nomeRazaoSocial") Pageable pageable) {
+            @PageableDefault(size = 10, sort = "id", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
 
         Page<ClienteResponse> pagina = clienteService.listarPaginado(termo, situacao, pageable);
         return ResponseEntity.ok(ApiResponse.sucesso(pagina));
@@ -79,5 +79,12 @@ public class ClienteController {
             msg = "Cliente inativado com sucesso!";
         }
         return ResponseEntity.ok(ApiResponse.sucesso(msg, atualizado));
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Exclui um cliente e seu arquivo vinculado")
+    public ResponseEntity<ApiResponse<Void>> deletar(@PathVariable Long id) {
+        clienteService.deletar(id);
+        return ResponseEntity.ok(ApiResponse.sucesso("Cliente excluído com sucesso!", null));
     }
 }

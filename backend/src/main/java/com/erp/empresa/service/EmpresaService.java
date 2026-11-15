@@ -44,7 +44,7 @@ public class EmpresaService {
 
     @Transactional(readOnly = true)
     public List<EmpresaResponse> listarTodas() {
-        return empresaRepository.findAll().stream()
+        return empresaRepository.findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "id")).stream()
                 .map(this::carregarResponse)
                 .collect(Collectors.toList());
     }
@@ -152,7 +152,25 @@ public class EmpresaService {
             empresa.setUf(null);
         }
 
+        Long arquivoAntigoId = empresa.getArquivoId();
         empresa.setArquivoId(request.getArquivoId());
+
+        if (arquivoAntigoId != null) {
+            boolean arquivoFoiAlterado = false;
+            if (request.getArquivoId() == null) {
+                arquivoFoiAlterado = true;
+            } else if (!arquivoAntigoId.equals(request.getArquivoId())) {
+                arquivoFoiAlterado = true;
+            }
+
+            if (arquivoFoiAlterado) {
+                try {
+                    arquivoService.deletar(arquivoAntigoId);
+                } catch (Exception e) {
+                    log.warn("Não foi possível excluir arquivo antigo ID {}: {}", arquivoAntigoId, e.getMessage());
+                }
+            }
+        }
 
         empresa = empresaRepository.save(empresa);
         log.info("Empresa atualizada com sucesso ID: {}", empresa.getId());
@@ -174,6 +192,22 @@ public class EmpresaService {
         log.info("Situação da empresa ID {} alterada para: {}", empresa.getId(), empresa.getSituacao());
 
         return carregarResponse(empresa);
+    }
+
+    @Transactional
+    public void deletar(Long id) {
+        Empresa empresa = empresaRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Empresa não encontrada com ID: " + id));
+
+        Long arquivoId = empresa.getArquivoId();
+        empresa.setArquivoId(null);
+        empresaRepository.delete(empresa);
+        log.info("Empresa ID {} excluída com sucesso", id);
+
+        if (arquivoId != null) {
+            arquivoService.deletar(arquivoId);
+            log.info("Arquivo vinculado ID {} excluído após a remoção da empresa", arquivoId);
+        }
     }
 
     private EmpresaResponse carregarResponse(Empresa empresa) {

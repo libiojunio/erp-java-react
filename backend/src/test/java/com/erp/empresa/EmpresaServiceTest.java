@@ -112,4 +112,21 @@ class EmpresaServiceTest {
         assertEquals("INATIVO", empresa.getSituacao());
         verify(empresaRepository, times(1)).save(empresa);
     }
+
+    @Test
+    @DisplayName("Deve deletar empresa e excluir seu arquivo vinculado logo após na mesma chamada")
+    void deveDeletarEmpresaEArquivoVinculado() {
+        Empresa emp = Empresa.builder()
+                .id(1L)
+                .razaoSocial("EMPRESA COM ARQUIVO")
+                .arquivoId(50L)
+                .build();
+
+        when(empresaRepository.findById(1L)).thenReturn(Optional.of(emp));
+
+        empresaService.deletar(1L);
+
+        verify(empresaRepository, times(1)).delete(emp);
+        verify(arquivoService, times(1)).deletar(50L);
+    }
 }

@@ -3,9 +3,11 @@ package com.erp.arquivo.service;
 import com.erp.arquivo.domain.Arquivo;
 import com.erp.arquivo.dto.ArquivoDto;
 import com.erp.arquivo.repository.ArquivoRepository;
+import com.erp.cliente.repository.ClienteRepository;
 import com.erp.comum.exception.BusinessException;
 import com.erp.comum.exception.ResourceNotFoundException;
 import com.erp.comum.multitenancy.TenantContext;
+import com.erp.empresa.repository.EmpresaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -13,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +23,8 @@ import java.io.IOException;
 public class ArquivoService {
 
     private final ArquivoRepository arquivoRepository;
+    private final EmpresaRepository empresaRepository;
+    private final ClienteRepository clienteRepository;
 
     @Transactional
     public ArquivoDto salvarArquivo(MultipartFile file) {
@@ -84,9 +89,16 @@ public class ArquivoService {
 
     @Transactional
     public void deletar(Long id) {
-        Arquivo arquivo = buscarPorId(id);
-        arquivoRepository.delete(arquivo);
-        log.info("Arquivo excluído com sucesso ID: {}", id);
+        if (id == null) {
+            return;
+        }
+        Optional<Arquivo> arquivoOpt = arquivoRepository.findById(id);
+        if (arquivoOpt.isPresent()) {
+            empresaRepository.desvincularArquivo(id);
+            clienteRepository.desvincularArquivo(id);
+            arquivoRepository.delete(arquivoOpt.get());
+            log.info("Arquivo desvinculado e excluído com sucesso ID: {}", id);
+        }
     }
 
     private String extrairExtensao(String nomeArquivo) {

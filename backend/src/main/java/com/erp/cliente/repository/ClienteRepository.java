@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -16,6 +17,8 @@ import java.util.Optional;
 public interface ClienteRepository extends JpaRepository<Cliente, Long> {
 
     List<Cliente> findByEmpresaId(Long empresaId);
+
+    List<Cliente> findByEmpresaIdOrderByIdDesc(Long empresaId);
 
     Page<Cliente> findByEmpresaId(Long empresaId, Pageable pageable);
 
@@ -29,12 +32,17 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
 
     boolean existsByEmpresaIdAndDocumentoAndIdNot(Long empresaId, String documento, Long id);
 
+    @Modifying
+    @Query("UPDATE Cliente c SET c.arquivoId = NULL WHERE c.arquivoId = :arquivoId")
+    void desvincularArquivo(@Param("arquivoId") Long arquivoId);
+
     @Query("SELECT c FROM Cliente c WHERE c.empresaId = :empresaId " +
            "AND (:situacao IS NULL OR c.situacao = :situacao) " +
            "AND (:termo IS NULL OR :termo = '' " +
            "     OR LOWER(c.nomeRazaoSocial) LIKE LOWER(CONCAT('%', :termo, '%')) " +
            "     OR (c.nomeFantasia IS NOT NULL AND LOWER(c.nomeFantasia) LIKE LOWER(CONCAT('%', :termo, '%'))) " +
-           "     OR c.documento LIKE CONCAT('%', :termoLimpo, '%'))")
+           "     OR c.documento LIKE CONCAT('%', :termoLimpo, '%')) " +
+           "ORDER BY c.id DESC")
     Page<Cliente> pesquisarClientes(
             @Param("empresaId") Long empresaId,
             @Param("termo") String termo,
