@@ -1,16 +1,23 @@
 package com.erp.cliente.service;
 
 import com.erp.cliente.domain.Cliente;
-import com.erp.cliente.dto.ClienteDto;
+import com.erp.cliente.domain.ClienteContato;
+import com.erp.cliente.domain.ClienteEndereco;
+import com.erp.cliente.dto.*;
 import com.erp.cliente.repository.ClienteRepository;
 import com.erp.comum.exception.BusinessException;
 import com.erp.comum.exception.ResourceNotFoundException;
 import com.erp.comum.multitenancy.TenantContext;
+import com.erp.comum.validation.CnpjValidator;
+import com.erp.comum.validation.CpfValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,22 +29,168 @@ public class ClienteService {
     private final ClienteRepository clienteRepository;
 
     @Transactional(readOnly = true)
-    public List<ClienteDto> listarClientesDaEmpresaAtiva() {
+    public Page<ClienteResponse> listarPaginado(String termo, String situacao, Pageable pageable) {
         Long empresaId = obterEmpresaAtivaId();
-        log.info("Listando clientes isolados para a empresa ID: {}", empresaId);
+        String termoBusca = (termo != null && !termo.trim().isEmpty()) ? termo.trim() : null;
+        String termoLimpo = termoBusca != null ? termoBusca.replaceAll("\\D", "") : null;
+        String situacaoFiltro = (situacao != null && !situacao.trim().isEmpty() && !situacao.equalsIgnoreCase("TODOS"))
+                ? situacao.toUpperCase().trim() : null;
 
+        log.debug("Pesquisando clientes da empresa ID {}: termo={}, situacao={}", empresaId, termoBusca, situacaoFiltro);
+
+        return clienteRepository.pesquisarClientes(empresaId, termoBusca, termoLimpo, situacaoFiltro, pageable)
+                .map(ClienteResponse::fromEntity);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ClienteResponse> listarTodos() {
+        Long empresaId = obterEmpresaAtivaId();
         return clienteRepository.findByEmpresaId(empresaId).stream()
-                .map(ClienteDto::fromEntity)
+                .map(ClienteResponse::fromEntity)
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public ClienteDto buscarPorId(Long id) {
+    public ClienteResponse buscarPorId(Long id) {
+        Long empresaId = obterEmpresaAtivaId();
+        Cliente cliente = clienteRepository.findWithDetailsByIdAndEmpresaId(id, empresaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cliente não encontrado com ID: " + id));
+
+        return ClienteResponse.fromEntity(cliente);
+    }
+
+    @Transactional
+    public ClienteResponse criar(ClienteRequest request) {
+        Long empresaId = obterEmpresaAtivaId();
+        validarDadosCliente(request, null, empresaId);
+
+        String docLimpo = request.getDocumento().replaceAll("\\D", "");
+
+        Cliente cliente = Cliente.builder()
+                .empresaId(empresaId)
+                .tipoPessoa(request.getTipoPessoa().toUpperCase())
+                .documento(docLimpo)
+                .nomeRazaoSocial(request.getNomeRazaoSocial().trim())
+                .nomeFantasia(request.getNomeFantasia() != null ? request.getNomeFantasia().trim() : null)
+                .inscricaoEstadual(request.getInscricaoEstadual() != null ? request.getInscricaoEstadual().trim() : null)
+                .dataNascimento(request.getDataNascimento())
+                .email(request.getEmail() != null ? request.getEmail().trim() : null)
+                .telefone(request.getTelefone() != null ? request.getTelefone().replaceAll("\\D", "") : null)
+                .situacao("ATIVO")
+                .build();
+
+        if (request.getEnderecos() != null) {
+            for (ClienteEnderecoDto endDto : request.getEnderecos()) {
+                ClienteEndereco end = endDto.toEntity();
+                cliente.adicionarEndereco(end);
+            }
+        }
+
+        if (request.getContatos() != null) {
+            for (ClienteContatoDto ctoDto : request.getContatos()) {
+                ClienteContato cto = ctoDto.toEntity();
+                cliente.adicionarContato(cto);
+            }
+        }
+
+        Cliente salvo = clienteRepository.save(cliente);
+        log.info("Cliente criado com sucesso: ID={}, Nome={}, EmpresaID={}", salvo.getId(), salvo.getNomeRazaoSocial(), empresaId);
+        return ClienteResponse.fromEntity(salvo);
+    }
+
+    @Transactional
+    public ClienteResponse atualizar(Long id, ClienteRequest request) {
+        Long empresaId = obterEmpresaAtivaId();
+        Cliente cliente = clienteRepository.findWithDetailsByIdAndEmpresaId(id, empresaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cliente não encontrado com ID: " + id));
+
+        validarDadosCliente(request, id, empresaId);
+
+        String docLimpo = request.getDocumento().replaceAll("\\D", "");
+
+        cliente.setTipoPessoa(request.getTipoPessoa().toUpperCase());
+        cliente.setDocumento(docLimpo);
+        cliente.setNomeRazaoSocial(request.getNomeRazaoSocial().trim());
+        cliente.setNomeFantasia(request.getNomeFantasia() != null ? request.getNomeFantasia().trim() : null);
+        cliente.setInscricaoEstadual(request.getInscricaoEstadual() != null ? request.getInscricaoEstadual().trim() : null);
+        cliente.setDataNascimento(request.getDataNascimento());
+        cliente.setEmail(request.getEmail() != null ? request.getEmail().trim() : null);
+        cliente.setTelefone(request.getTelefone() != null ? request.getTelefone().replaceAll("\\D", "") : null);
+
+        // Atualizar endereços (orphanRemoval gerencia a exclusão dos que não estão mais presentes)
+        cliente.getEnderecos().clear();
+        if (request.getEnderecos() != null) {
+            for (ClienteEnderecoDto endDto : request.getEnderecos()) {
+                ClienteEndereco end = endDto.toEntity();
+                cliente.adicionarEndereco(end);
+            }
+        }
+
+        // Atualizar contatos
+        cliente.getContatos().clear();
+        if (request.getContatos() != null) {
+            for (ClienteContatoDto ctoDto : request.getContatos()) {
+                ClienteContato cto = ctoDto.toEntity();
+                cliente.adicionarContato(cto);
+            }
+        }
+
+        Cliente atualizado = clienteRepository.save(cliente);
+        log.info("Cliente atualizado com sucesso: ID={}, EmpresaID={}", atualizado.getId(), empresaId);
+        return ClienteResponse.fromEntity(atualizado);
+    }
+
+    @Transactional
+    public ClienteResponse alterarSituacao(Long id, String novaSituacao) {
         Long empresaId = obterEmpresaAtivaId();
         Cliente cliente = clienteRepository.findByIdAndEmpresaId(id, empresaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cliente não encontrado com ID: " + id));
 
-        return ClienteDto.fromEntity(cliente);
+        cliente.setSituacao(novaSituacao.toUpperCase().trim());
+        Cliente salvo = clienteRepository.save(cliente);
+        log.info("Situação do cliente ID={} alterada para: {}", id, salvo.getSituacao());
+        return ClienteResponse.fromEntity(salvo);
+    }
+
+    private void validarDadosCliente(ClienteRequest request, Long clienteId, Long empresaId) {
+        String tipo = request.getTipoPessoa();
+        String docLimpo = request.getDocumento() != null ? request.getDocumento().replaceAll("\\D", "") : "";
+
+        if ("PF".equalsIgnoreCase(tipo)) {
+            if (docLimpo.length() != 11 || !CpfValidator.isValid(docLimpo)) {
+                throw new BusinessException("CPF informado é inválido: " + request.getDocumento());
+            }
+            if (request.getDataNascimento() != null && request.getDataNascimento().isAfter(LocalDate.now())) {
+                throw new BusinessException("Data de nascimento não pode ser no futuro");
+            }
+        } else if ("PJ".equalsIgnoreCase(tipo)) {
+            if (docLimpo.length() != 14 || !CnpjValidator.isValid(docLimpo)) {
+                throw new BusinessException("CNPJ informado é inválido: " + request.getDocumento());
+            }
+        } else {
+            throw new BusinessException("Tipo de pessoa deve ser PF ou PJ");
+        }
+
+        // Unicidade na empresa
+        if (clienteId == null) {
+            if (clienteRepository.existsByEmpresaIdAndDocumento(empresaId, docLimpo)) {
+                throw new BusinessException("Já existe um cliente cadastrado com este documento (" + request.getDocumento() + ") nesta empresa.");
+            }
+        } else {
+            if (clienteRepository.existsByEmpresaIdAndDocumentoAndIdNot(empresaId, docLimpo, clienteId)) {
+                throw new BusinessException("Já existe outro cliente cadastrado com este documento (" + request.getDocumento() + ") nesta empresa.");
+            }
+        }
+
+        // Regra de múltiplos endereços: se houver endereços, pelo menos um deve ser PRINCIPAL
+        if (request.getEnderecos() != null && !request.getEnderecos().isEmpty()) {
+            long principais = request.getEnderecos().stream()
+                    .filter(e -> "PRINCIPAL".equalsIgnoreCase(e.getTipo()))
+                    .count();
+            if (principais == 0) {
+                throw new BusinessException("É obrigatório informar ao menos um endereço com o tipo 'PRINCIPAL'.");
+            }
+        }
     }
 
     private Long obterEmpresaAtivaId() {

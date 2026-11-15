@@ -29,6 +29,10 @@ public final class CnpjValidator {
         }
     }
 
+    public static boolean isValid(String cnpj) {
+        return isValido(cnpj);
+    }
+
     private static int calcularDigito(String str, int[] peso) {
         int soma = 0;
         for (int i = str.length() - 1, digito; i >= 0; i--) {

@@ -1,10 +1,13 @@
 package com.erp.cliente.domain;
 
 import com.erp.comum.audit.AuditableEntity;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "cliente")
@@ -49,4 +52,44 @@ public class Cliente extends AuditableEntity {
     @Column(nullable = false, length = 20)
     @Builder.Default
     private String situacao = "ATIVO";
+
+    @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    @Builder.Default
+    private Set<ClienteEndereco> enderecos = new LinkedHashSet<>();
+
+    @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    @Builder.Default
+    private Set<ClienteContato> contatos = new LinkedHashSet<>();
+
+    public void adicionarEndereco(ClienteEndereco endereco) {
+        if (enderecos == null) {
+            enderecos = new LinkedHashSet<>();
+        }
+        enderecos.add(endereco);
+        endereco.setCliente(this);
+    }
+
+    public void removerEndereco(ClienteEndereco endereco) {
+        if (enderecos != null) {
+            enderecos.remove(endereco);
+            endereco.setCliente(null);
+        }
+    }
+
+    public void adicionarContato(ClienteContato contato) {
+        if (contatos == null) {
+            contatos = new LinkedHashSet<>();
+        }
+        contatos.add(contato);
+        contato.setCliente(this);
+    }
+
+    public void removerContato(ClienteContato contato) {
+        if (contatos != null) {
+            contatos.remove(contato);
+            contato.setCliente(null);
+        }
+    }
 }

@@ -98,6 +98,7 @@ export const EmpresasPage: React.FC = () => {
     cidade: '',
     uf: 'SP',
   });
+  const [initialFormData, setInitialFormData] = useState<typeof formData | null>(null);
   const [formErro, setFormErro] = useState<string | null>(null);
 
   // Consulta das empresas cadastradas
@@ -194,7 +195,7 @@ export const EmpresasPage: React.FC = () => {
   const handleAbrirNovo = () => {
     setEmpresaEmEdicao(null);
     setFormErro(null);
-    setFormData({
+    const novoForm = {
       razaoSocial: '',
       nomeFantasia: '',
       cnpj: '',
@@ -206,14 +207,16 @@ export const EmpresasPage: React.FC = () => {
       bairro: '',
       cidade: '',
       uf: 'SP',
-    });
+    };
+    setFormData(novoForm);
+    setInitialFormData(novoForm);
     setModalOpen(true);
   };
 
   const handleAbrirEditar = (empresa: EmpresaItem) => {
     setEmpresaEmEdicao(empresa);
     setFormErro(null);
-    setFormData({
+    const editForm = {
       razaoSocial: empresa.razaoSocial || '',
       nomeFantasia: empresa.nomeFantasia || '',
       cnpj: formatarCnpj(empresa.cnpj || ''),
@@ -225,7 +228,9 @@ export const EmpresasPage: React.FC = () => {
       bairro: empresa.bairro || '',
       cidade: empresa.cidade || '',
       uf: empresa.uf || 'SP',
-    });
+    };
+    setFormData(editForm);
+    setInitialFormData(editForm);
     setModalOpen(true);
   };
 
@@ -239,6 +244,20 @@ export const EmpresasPage: React.FC = () => {
     const novaSituacao = empresaAlvoInativacao.situacao === 'ATIVO' ? 'INATIVO' : 'ATIVO';
     situacaoMutation.mutate({ id: empresaAlvoInativacao.id, novaSituacao });
   };
+
+  const isModified = initialFormData !== null && (
+    formData.razaoSocial.trim() !== initialFormData.razaoSocial.trim() ||
+    formData.nomeFantasia.trim() !== initialFormData.nomeFantasia.trim() ||
+    formData.cnpj.replace(/\D/g, '') !== initialFormData.cnpj.replace(/\D/g, '') ||
+    formData.inscricaoEstadual.trim() !== initialFormData.inscricaoEstadual.trim() ||
+    formData.cep.replace(/\D/g, '') !== initialFormData.cep.replace(/\D/g, '') ||
+    formData.logradouro.trim() !== initialFormData.logradouro.trim() ||
+    formData.numero.trim() !== initialFormData.numero.trim() ||
+    formData.complemento.trim() !== initialFormData.complemento.trim() ||
+    formData.bairro.trim() !== initialFormData.bairro.trim() ||
+    formData.cidade.trim() !== initialFormData.cidade.trim() ||
+    formData.uf !== initialFormData.uf
+  );
 
   // Busca automática de endereço por CEP (ViaCEP)
   const handleCepBlur = async () => {
@@ -365,7 +384,18 @@ export const EmpresasPage: React.FC = () => {
       </Paper>
 
       {/* Modal de Formulário (Criação e Edição) */}
-      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} maxWidth="md" fullWidth>
+      <Dialog
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        maxWidth="md"
+        fullWidth
+        sx={{
+          '& .MuiFormLabel-asterisk': {
+            color: '#d32f2f',
+            fontWeight: 'bold',
+          },
+        }}
+      >
         <DialogTitle sx={{ fontWeight: 700 }}>
           {empresaEmEdicao ? `Editar Empresa #${empresaEmEdicao.id}` : 'Cadastrar Nova Empresa'}
         </DialogTitle>
@@ -492,7 +522,7 @@ export const EmpresasPage: React.FC = () => {
           <Button
             variant="contained"
             onClick={() => salvarMutation.mutate()}
-            disabled={salvarMutation.isPending || !formData.razaoSocial || !formData.cnpj}
+            disabled={salvarMutation.isPending || !isModified || !formData.razaoSocial.trim() || !formData.cnpj.trim()}
           >
             {salvarMutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Salvar Empresa'}
           </Button>
