@@ -25,7 +25,6 @@ function SlideTransition(props: SlideProps) {
   return <Slide {...props} direction="left" />;
 }
 import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -34,6 +33,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { dataGridPtBR } from '../utils/dataGridPtBR';
 import { FileUploadDropzone, ArquivoInfo } from '../components/common/FileUploadDropzone';
+import { CampoVisualizacao } from '../components/common/CampoVisualizacao';
 
 interface EmpresaItem {
   id: number;
@@ -82,6 +82,7 @@ export const EmpresasPage: React.FC = () => {
 
   // Estados de controle de formulário e modais
   const [modalOpen, setModalOpen] = useState(false);
+  const [modoModal, setModoModal] = useState<'VISUALIZANDO' | 'ALTERANDO' | 'NOVO'>('VISUALIZANDO');
   const [empresaEmEdicao, setEmpresaEmEdicao] = useState<EmpresaItem | null>(null);
   const [confirmInativarOpen, setConfirmInativarOpen] = useState(false);
   const [empresaAlvoInativacao, setEmpresaAlvoInativacao] = useState<EmpresaItem | null>(null);
@@ -166,7 +167,6 @@ export const EmpresasPage: React.FC = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['empresas'] });
-      setModalOpen(false);
       let mensagemSucesso = 'Empresa cadastrada!';
       if (empresaEmEdicao) {
         mensagemSucesso = 'Empresa atualizada!';
@@ -174,6 +174,32 @@ export const EmpresasPage: React.FC = () => {
       if (data.mensagem) {
         mensagemSucesso = data.mensagem;
       }
+
+      if (data.dados) {
+        const dadosSalvos: EmpresaItem = data.dados;
+        setEmpresaEmEdicao(dadosSalvos);
+        const updatedForm = {
+          razaoSocial: dadosSalvos.razaoSocial || '',
+          nomeFantasia: dadosSalvos.nomeFantasia || '',
+          cnpj: formatarCnpj(dadosSalvos.cnpj || ''),
+          inscricaoEstadual: dadosSalvos.inscricaoEstadual || '',
+          cep: formatarCep(dadosSalvos.cep || ''),
+          logradouro: dadosSalvos.logradouro || '',
+          numero: dadosSalvos.numero || '',
+          complemento: dadosSalvos.complemento || '',
+          bairro: dadosSalvos.bairro || '',
+          cidade: dadosSalvos.cidade || '',
+          uf: dadosSalvos.uf || 'SP',
+          arquivoId: dadosSalvos.arquivoId || null,
+          arquivo: dadosSalvos.arquivo || null,
+        };
+        setFormData(updatedForm);
+        setInitialFormData(updatedForm);
+      } else {
+        setInitialFormData({ ...formData });
+      }
+
+      setModoModal('VISUALIZANDO');
 
       setSnackbar({
         open: true,
@@ -231,13 +257,14 @@ export const EmpresasPage: React.FC = () => {
     };
     setFormData(novoForm);
     setInitialFormData(novoForm);
+    setModoModal('NOVO');
     setModalOpen(true);
   };
 
-  const handleAbrirEditar = (empresa: EmpresaItem) => {
+  const handleAbrirVisualizar = (empresa: EmpresaItem) => {
     setEmpresaEmEdicao(empresa);
     setFormErro(null);
-    const editForm = {
+    const viewForm = {
       razaoSocial: empresa.razaoSocial || '',
       nomeFantasia: empresa.nomeFantasia || '',
       cnpj: formatarCnpj(empresa.cnpj || ''),
@@ -252,8 +279,9 @@ export const EmpresasPage: React.FC = () => {
       arquivoId: empresa.arquivoId || null,
       arquivo: empresa.arquivo || null,
     };
-    setFormData(editForm);
-    setInitialFormData(editForm);
+    setFormData(viewForm);
+    setInitialFormData(viewForm);
+    setModoModal('VISUALIZANDO');
     setModalOpen(true);
   };
 
@@ -312,22 +340,30 @@ export const EmpresasPage: React.FC = () => {
     {
       field: 'id',
       headerName: 'ID',
-      width: 75,
+      width: 80,
       align: 'center',
       headerAlign: 'center',
       renderCell: (params) => (
-        <Chip
-          label={params.value}
-          size="small"
-          sx={{
-            bgcolor: '#e0e0e0',
-            color: '#424242',
-            fontWeight: 700,
-            borderRadius: '16px',
-            minWidth: 32,
-            height: 24,
-          }}
-        />
+        <Tooltip title="Clique para visualizar os detalhes">
+          <Chip
+            label={params.value}
+            size="small"
+            clickable
+            onClick={() => handleAbrirVisualizar(params.row)}
+            sx={{
+              bgcolor: '#e0e0e0',
+              color: '#424242',
+              fontWeight: 700,
+              borderRadius: '16px',
+              minWidth: 32,
+              height: 24,
+              cursor: 'pointer',
+              '&:hover': {
+                bgcolor: '#bdbdbd',
+              },
+            }}
+          />
+        </Tooltip>
       ),
     },
     {
@@ -360,19 +396,14 @@ export const EmpresasPage: React.FC = () => {
     {
       field: 'acoes',
       headerName: 'Ações',
-      width: 120,
+      width: 90,
       sortable: false,
       renderCell: (params) => {
         const item: EmpresaItem = params.row;
         const isAtivo = item.situacao === 'ATIVO';
 
         return (
-          <Box sx={{ display: 'flex', gap: 0.5 }}>
-            <Tooltip title="Editar Empresa">
-              <IconButton size="small" color="primary" onClick={() => handleAbrirEditar(item)}>
-                <EditIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
+          <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center', width: '100%' }}>
             <Tooltip title={isAtivo ? 'Inativar Empresa' : 'Reativar Empresa'}>
               <IconButton
                 size="small"
@@ -387,6 +418,100 @@ export const EmpresasPage: React.FC = () => {
       },
     },
   ];
+
+  const isVisualizacao = modoModal === 'VISUALIZANDO';
+
+  let tituloModal = 'Cadastrar Nova Empresa';
+  if (modoModal === 'VISUALIZANDO') {
+    let nomeExibicao = formData.nomeFantasia;
+    if (!nomeExibicao || nomeExibicao.trim() === '') {
+      nomeExibicao = formData.razaoSocial;
+    }
+    tituloModal = 'Visualizando: ' + nomeExibicao;
+  } else if (modoModal === 'ALTERANDO') {
+    let nomeExibicao = formData.nomeFantasia;
+    if (!nomeExibicao || nomeExibicao.trim() === '') {
+      nomeExibicao = formData.razaoSocial;
+    }
+    tituloModal = 'Alterando: ' + nomeExibicao;
+  }
+
+  const renderAcoesModal = () => {
+    if (modoModal === 'VISUALIZANDO') {
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, width: '100%' }}>
+          <Button variant="outlined" onClick={() => setModalOpen(false)}>
+            Fechar
+          </Button>
+          <Button variant="contained" color="primary" onClick={() => setModoModal('ALTERANDO')}>
+            Alterar
+          </Button>
+        </Box>
+      );
+    }
+
+    if (modoModal === 'ALTERANDO') {
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, width: '100%' }}>
+          <Button
+            onClick={() => {
+              if (initialFormData) {
+                setFormData(initialFormData);
+              }
+              setModoModal('VISUALIZANDO');
+            }}
+            disabled={salvarMutation.isPending}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => salvarMutation.mutate()}
+            disabled={salvarMutation.isPending || !isModified || !formData.razaoSocial.trim() || !formData.cnpj.trim()}
+          >
+            {salvarMutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Salvar Empresa'}
+          </Button>
+        </Box>
+      );
+    }
+
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, width: '100%' }}>
+        <Button onClick={() => setModalOpen(false)} disabled={salvarMutation.isPending}>
+          Cancelar
+        </Button>
+        <Button
+          variant="contained"
+          onClick={() => salvarMutation.mutate()}
+          disabled={salvarMutation.isPending || !isModified || !formData.razaoSocial.trim() || !formData.cnpj.trim()}
+        >
+          {salvarMutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Salvar Empresa'}
+        </Button>
+      </Box>
+    );
+  };
+
+  let previewAnexoEmpresa = (
+    <Typography variant="body2" color="text.secondary">
+      Nenhum anexo vinculado
+    </Typography>
+  );
+  if (formData.arquivo) {
+    previewAnexoEmpresa = (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          {formData.arquivo.nome} ({formData.arquivo.extensao.toUpperCase()})
+        </Typography>
+        <Button
+          size="small"
+          variant="text"
+          onClick={() => window.open('/api/arquivos/' + formData.arquivo!.id + '/conteudo', '_blank')}
+        >
+          Visualizar arquivo
+        </Button>
+      </Box>
+    );
+  }
 
   return (
     <Box>
@@ -445,7 +570,7 @@ export const EmpresasPage: React.FC = () => {
         }}
       >
         <DialogTitle sx={{ fontWeight: 700 }}>
-          {empresaEmEdicao ? `Editar Empresa #${empresaEmEdicao.id}` : 'Cadastrar Nova Empresa'}
+          {tituloModal}
         </DialogTitle>
         <DialogContent dividers>
           {formErro && (
@@ -456,39 +581,55 @@ export const EmpresasPage: React.FC = () => {
 
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
             <Grid item xs={12} sm={6}>
-              <TextField
-                required
-                fullWidth
-                label="CNPJ"
-                placeholder="00.000.000/0000-00"
-                value={formData.cnpj}
-                onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })}
-              />
+              {isVisualizacao && <CampoVisualizacao label="CNPJ" valor={formData.cnpj} />}
+              {!isVisualizacao && (
+                <TextField
+                  required
+                  fullWidth
+                  label="CNPJ"
+                  placeholder="00.000.000/0000-00"
+                  value={formData.cnpj}
+                  onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })}
+                  disabled={salvarMutation.isPending}
+                />
+              )}
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Inscrição Estadual"
-                value={formData.inscricaoEstadual}
-                onChange={(e) => setFormData({ ...formData, inscricaoEstadual: e.target.value })}
-              />
+              {isVisualizacao && <CampoVisualizacao label="Inscrição Estadual" valor={formData.inscricaoEstadual} />}
+              {!isVisualizacao && (
+                <TextField
+                  fullWidth
+                  label="Inscrição Estadual"
+                  value={formData.inscricaoEstadual}
+                  onChange={(e) => setFormData({ ...formData, inscricaoEstadual: e.target.value })}
+                  disabled={salvarMutation.isPending}
+                />
+              )}
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField
-                required
-                fullWidth
-                label="Razão Social"
-                value={formData.razaoSocial}
-                onChange={(e) => setFormData({ ...formData, razaoSocial: e.target.value })}
-              />
+              {isVisualizacao && <CampoVisualizacao label="Razão Social" valor={formData.razaoSocial} />}
+              {!isVisualizacao && (
+                <TextField
+                  required
+                  fullWidth
+                  label="Razão Social"
+                  value={formData.razaoSocial}
+                  onChange={(e) => setFormData({ ...formData, razaoSocial: e.target.value })}
+                  disabled={salvarMutation.isPending}
+                />
+              )}
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Nome Fantasia"
-                value={formData.nomeFantasia}
-                onChange={(e) => setFormData({ ...formData, nomeFantasia: e.target.value })}
-              />
+              {isVisualizacao && <CampoVisualizacao label="Nome Fantasia" valor={formData.nomeFantasia} />}
+              {!isVisualizacao && (
+                <TextField
+                  fullWidth
+                  label="Nome Fantasia"
+                  value={formData.nomeFantasia}
+                  onChange={(e) => setFormData({ ...formData, nomeFantasia: e.target.value })}
+                  disabled={salvarMutation.isPending}
+                />
+              )}
             </Grid>
 
             <Grid item xs={12}>
@@ -498,98 +639,124 @@ export const EmpresasPage: React.FC = () => {
             </Grid>
 
             <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label="CEP"
-                placeholder="00000-000"
-                value={formData.cep}
-                onChange={(e) => setFormData({ ...formData, cep: e.target.value })}
-                onBlur={handleCepBlur}
-                helperText="Preenche o endereço automaticamente"
-              />
+              {isVisualizacao && <CampoVisualizacao label="CEP" valor={formData.cep} />}
+              {!isVisualizacao && (
+                <TextField
+                  fullWidth
+                  label="CEP"
+                  placeholder="00000-000"
+                  value={formData.cep}
+                  onChange={(e) => setFormData({ ...formData, cep: e.target.value })}
+                  onBlur={handleCepBlur}
+                  helperText="Preenche o endereço automaticamente"
+                  disabled={salvarMutation.isPending}
+                />
+              )}
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Logradouro / Rua"
-                value={formData.logradouro}
-                onChange={(e) => setFormData({ ...formData, logradouro: e.target.value })}
-              />
+              {isVisualizacao && <CampoVisualizacao label="Logradouro / Rua" valor={formData.logradouro} />}
+              {!isVisualizacao && (
+                <TextField
+                  fullWidth
+                  label="Logradouro / Rua"
+                  value={formData.logradouro}
+                  onChange={(e) => setFormData({ ...formData, logradouro: e.target.value })}
+                  disabled={salvarMutation.isPending}
+                />
+              )}
             </Grid>
             <Grid item xs={12} sm={2}>
-              <TextField
-                fullWidth
-                label="Número"
-                value={formData.numero}
-                onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
-              />
+              {isVisualizacao && <CampoVisualizacao label="Número" valor={formData.numero} />}
+              {!isVisualizacao && (
+                <TextField
+                  fullWidth
+                  label="Número"
+                  value={formData.numero}
+                  onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
+                  disabled={salvarMutation.isPending}
+                />
+              )}
             </Grid>
             <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label="Complemento"
-                value={formData.complemento}
-                onChange={(e) => setFormData({ ...formData, complemento: e.target.value })}
-              />
+              {isVisualizacao && <CampoVisualizacao label="Complemento" valor={formData.complemento} />}
+              {!isVisualizacao && (
+                <TextField
+                  fullWidth
+                  label="Complemento"
+                  value={formData.complemento}
+                  onChange={(e) => setFormData({ ...formData, complemento: e.target.value })}
+                  disabled={salvarMutation.isPending}
+                />
+              )}
             </Grid>
             <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label="Bairro"
-                value={formData.bairro}
-                onChange={(e) => setFormData({ ...formData, bairro: e.target.value })}
-              />
+              {isVisualizacao && <CampoVisualizacao label="Bairro" valor={formData.bairro} />}
+              {!isVisualizacao && (
+                <TextField
+                  fullWidth
+                  label="Bairro"
+                  value={formData.bairro}
+                  onChange={(e) => setFormData({ ...formData, bairro: e.target.value })}
+                  disabled={salvarMutation.isPending}
+                />
+              )}
             </Grid>
             <Grid item xs={12} sm={3}>
-              <TextField
-                fullWidth
-                label="Cidade"
-                value={formData.cidade}
-                onChange={(e) => setFormData({ ...formData, cidade: e.target.value })}
-              />
+              {isVisualizacao && <CampoVisualizacao label="Cidade" valor={formData.cidade} />}
+              {!isVisualizacao && (
+                <TextField
+                  fullWidth
+                  label="Cidade"
+                  value={formData.cidade}
+                  onChange={(e) => setFormData({ ...formData, cidade: e.target.value })}
+                  disabled={salvarMutation.isPending}
+                />
+              )}
             </Grid>
             <Grid item xs={12} sm={1}>
-              <TextField
-                select
-                fullWidth
-                label="UF"
-                value={formData.uf}
-                onChange={(e) => setFormData({ ...formData, uf: e.target.value })}
-              >
-                {ESTADOS_BR.map((uf) => (
-                  <MenuItem key={uf} value={uf}>{uf}</MenuItem>
-                ))}
-              </TextField>
+              {isVisualizacao && <CampoVisualizacao label="UF" valor={formData.uf} />}
+              {!isVisualizacao && (
+                <TextField
+                  select
+                  fullWidth
+                  label="UF"
+                  value={formData.uf}
+                  onChange={(e) => setFormData({ ...formData, uf: e.target.value })}
+                  disabled={salvarMutation.isPending}
+                >
+                  {ESTADOS_BR.map((uf) => (
+                    <MenuItem key={uf} value={uf}>{uf}</MenuItem>
+                  ))}
+                </TextField>
+              )}
             </Grid>
 
             <Grid item xs={12}>
-              <FileUploadDropzone
-                label="Logotipo / Anexo da Empresa (PDF, Imagem, TXT)"
-                arquivoId={formData.arquivoId}
-                arquivoInicial={formData.arquivo}
-                onArquivoAlterado={(arq) => {
-                  if (arq) {
-                    setFormData((prev) => ({ ...prev, arquivoId: arq.id, arquivo: arq }));
-                  } else {
-                    setFormData((prev) => ({ ...prev, arquivoId: null, arquivo: null }));
-                  }
-                }}
-                disabled={salvarMutation.isPending}
-              />
+              {isVisualizacao && (
+                <CampoVisualizacao label="Logotipo / Anexo da Empresa">
+                  {previewAnexoEmpresa}
+                </CampoVisualizacao>
+              )}
+              {!isVisualizacao && (
+                <FileUploadDropzone
+                  label="Logotipo / Anexo da Empresa (PDF, Imagem, TXT)"
+                  arquivoId={formData.arquivoId}
+                  arquivoInicial={formData.arquivo}
+                  onArquivoAlterado={(arq) => {
+                    if (arq) {
+                      setFormData((prev) => ({ ...prev, arquivoId: arq.id, arquivo: arq }));
+                    } else {
+                      setFormData((prev) => ({ ...prev, arquivoId: null, arquivo: null }));
+                    }
+                  }}
+                  disabled={salvarMutation.isPending}
+                />
+              )}
             </Grid>
           </Grid>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={() => setModalOpen(false)} disabled={salvarMutation.isPending}>
-            Cancelar
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => salvarMutation.mutate()}
-            disabled={salvarMutation.isPending || !isModified || !formData.razaoSocial.trim() || !formData.cnpj.trim()}
-          >
-            {salvarMutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Salvar Empresa'}
-          </Button>
+          {renderAcoesModal()}
         </DialogActions>
       </Dialog>
 

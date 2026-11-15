@@ -34,7 +34,6 @@ function SlideTransition(props: SlideProps) {
 }
 import AddIcon from '@mui/icons-material/Add';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -49,6 +48,7 @@ import { useAuth } from '../context/AuthContext';
 import { dataGridPtBR } from '../utils/dataGridPtBR';
 import { api } from '../services/api';
 import { FileUploadDropzone, ArquivoInfo } from '../components/common/FileUploadDropzone';
+import { CampoVisualizacao } from '../components/common/CampoVisualizacao';
 import {
   ESTADOS_BR,
   formatarCpf,
@@ -139,6 +139,7 @@ export const ClientesPage: React.FC = () => {
 
   // Estados dos modais
   const [modalOpen, setModalOpen] = useState(false);
+  const [modoModal, setModoModal] = useState<'VISUALIZANDO' | 'ALTERANDO' | 'NOVO'>('VISUALIZANDO');
   const [abaAtiva, setAbaAtiva] = useState(0);
   const [clienteEmEdicao, setClienteEmEdicao] = useState<ClienteItem | null>(null);
   const [formData, setFormData] = useState<ClienteForm>(FORMULARIO_INICIAL);
@@ -217,7 +218,6 @@ export const ClientesPage: React.FC = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['clientes'] });
-      setModalOpen(false);
       let mensagemSucesso = 'Cliente cadastrado com sucesso!';
       if (clienteEmEdicao) {
         mensagemSucesso = 'Cliente atualizado com sucesso!';
@@ -225,6 +225,66 @@ export const ClientesPage: React.FC = () => {
       if (data.mensagem) {
         mensagemSucesso = data.mensagem;
       }
+
+      if (data.dados) {
+        const clienteSalvo = data.dados;
+        setClienteEmEdicao(clienteSalvo);
+
+        let tipoPessoa = 'PJ';
+        if (clienteSalvo.tipoPessoa === 'PF') {
+          tipoPessoa = 'PF';
+        }
+
+        let docFormatado = '';
+        if (tipoPessoa === 'PF') {
+          docFormatado = formatarCpf(clienteSalvo.documento || '');
+        } else {
+          docFormatado = formatarCnpj(clienteSalvo.documento || '');
+        }
+
+        let dataNasc = '';
+        if (clienteSalvo.dataNascimento) {
+          dataNasc = clienteSalvo.dataNascimento.substring(0, 10);
+        }
+
+        const updatedForm: ClienteForm = {
+          tipoPessoa: tipoPessoa as 'PF' | 'PJ',
+          documento: docFormatado,
+          nomeRazaoSocial: clienteSalvo.nomeRazaoSocial || '',
+          nomeFantasia: clienteSalvo.nomeFantasia || '',
+          inscricaoEstadual: clienteSalvo.inscricaoEstadual || '',
+          dataNascimento: dataNasc,
+          email: clienteSalvo.email || '',
+          telefone: formatarTelefone(clienteSalvo.telefone || ''),
+          arquivoId: clienteSalvo.arquivoId || null,
+          arquivo: clienteSalvo.arquivo || null,
+          enderecos: (clienteSalvo.enderecos || []).map((end: any) => ({
+            id: end.id,
+            tipo: end.tipo || 'PRINCIPAL',
+            cep: formatarCep(end.cep || ''),
+            logradouro: end.logradouro || '',
+            numero: end.numero || '',
+            complemento: end.complemento || '',
+            bairro: end.bairro || '',
+            cidade: end.cidade || '',
+            uf: end.uf || 'SP',
+          })),
+          contatos: (clienteSalvo.contatos || []).map((cto: any) => ({
+            id: cto.id,
+            nome: cto.nome || '',
+            cargo: cto.cargo || '',
+            email: cto.email || '',
+            telefone: formatarTelefone(cto.telefone || ''),
+          })),
+        };
+
+        setFormData(updatedForm);
+        setInitialFormData(JSON.parse(JSON.stringify(updatedForm)));
+      } else {
+        setInitialFormData(JSON.parse(JSON.stringify(formData)));
+      }
+
+      setModoModal('VISUALIZANDO');
 
       setSnackbar({
         open: true,
@@ -291,11 +351,12 @@ export const ClientesPage: React.FC = () => {
     };
     setFormData(novoForm);
     setInitialFormData(JSON.parse(JSON.stringify(novoForm)));
+    setModoModal('NOVO');
     setModalOpen(true);
   };
 
-  // Abrir modal de edição com busca detalhada
-  const handleAbrirEditar = async (cliente: ClienteItem) => {
+  // Abrir modal de visualização com busca detalhada
+  const handleAbrirVisualizar = async (cliente: ClienteItem) => {
     setFormErro(null);
     setAbaAtiva(0);
 
@@ -311,15 +372,30 @@ export const ClientesPage: React.FC = () => {
 
     setClienteEmEdicao(clienteCompleto);
 
+    let tipoPessoa = 'PJ';
+    if (clienteCompleto.tipoPessoa === 'PF') {
+      tipoPessoa = 'PF';
+    }
+
+    let docFormatado = '';
+    if (tipoPessoa === 'PF') {
+      docFormatado = formatarCpf(clienteCompleto.documento || '');
+    } else {
+      docFormatado = formatarCnpj(clienteCompleto.documento || '');
+    }
+
+    let dataNasc = '';
+    if (clienteCompleto.dataNascimento) {
+      dataNasc = clienteCompleto.dataNascimento.substring(0, 10);
+    }
+
     const editForm: ClienteForm = {
-      tipoPessoa: (clienteCompleto.tipoPessoa as 'PF' | 'PJ') || 'PJ',
-      documento: clienteCompleto.tipoPessoa === 'PF'
-        ? formatarCpf(clienteCompleto.documento || '')
-        : formatarCnpj(clienteCompleto.documento || ''),
+      tipoPessoa: tipoPessoa as 'PF' | 'PJ',
+      documento: docFormatado,
       nomeRazaoSocial: clienteCompleto.nomeRazaoSocial || '',
       nomeFantasia: clienteCompleto.nomeFantasia || '',
       inscricaoEstadual: clienteCompleto.inscricaoEstadual || '',
-      dataNascimento: clienteCompleto.dataNascimento ? clienteCompleto.dataNascimento.substring(0, 10) : '',
+      dataNascimento: dataNasc,
       email: clienteCompleto.email || '',
       telefone: formatarTelefone(clienteCompleto.telefone || ''),
       arquivoId: clienteCompleto.arquivoId || null,
@@ -346,6 +422,7 @@ export const ClientesPage: React.FC = () => {
 
     setFormData(editForm);
     setInitialFormData(JSON.parse(JSON.stringify(editForm)));
+    setModoModal('VISUALIZANDO');
     setModalOpen(true);
   };
 
@@ -494,22 +571,30 @@ export const ClientesPage: React.FC = () => {
     {
       field: 'id',
       headerName: 'ID',
-      width: 75,
+      width: 80,
       align: 'center',
       headerAlign: 'center',
       renderCell: (params) => (
-        <Chip
-          label={params.value}
-          size="small"
-          sx={{
-            bgcolor: '#e0e0e0',
-            color: '#424242',
-            fontWeight: 700,
-            borderRadius: '16px',
-            minWidth: 32,
-            height: 24,
-          }}
-        />
+        <Tooltip title="Clique para visualizar os detalhes">
+          <Chip
+            label={params.value}
+            size="small"
+            clickable
+            onClick={() => handleAbrirVisualizar(params.row)}
+            sx={{
+              bgcolor: '#e0e0e0',
+              color: '#424242',
+              fontWeight: 700,
+              borderRadius: '16px',
+              minWidth: 32,
+              height: 24,
+              cursor: 'pointer',
+              '&:hover': {
+                bgcolor: '#bdbdbd',
+              },
+            }}
+          />
+        </Tooltip>
       ),
     },
     {
@@ -576,15 +661,10 @@ export const ClientesPage: React.FC = () => {
     {
       field: 'acoes',
       headerName: 'Ações',
-      width: 110,
+      width: 90,
       sortable: false,
       renderCell: (params) => (
-        <Box sx={{ display: 'flex', gap: 0.5 }}>
-          <Tooltip title="Editar Cliente">
-            <IconButton size="small" color="primary" onClick={() => handleAbrirEditar(params.row)}>
-              <EditIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
+        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center', width: '100%' }}>
           <Tooltip title={params.row.situacao === 'ATIVO' ? 'Inativar Cliente' : 'Reativar Cliente'}>
             <IconButton
               size="small"
@@ -605,6 +685,100 @@ export const ClientesPage: React.FC = () => {
       ),
     },
   ];
+
+  const isVisualizacao = modoModal === 'VISUALIZANDO';
+
+  let tituloModalCliente = 'Novo Cadastro de Cliente';
+  if (modoModal === 'VISUALIZANDO') {
+    let nomeExibicao = formData.nomeFantasia;
+    if (!nomeExibicao || nomeExibicao.trim() === '') {
+      nomeExibicao = formData.nomeRazaoSocial;
+    }
+    tituloModalCliente = 'Visualizando: ' + nomeExibicao;
+  } else if (modoModal === 'ALTERANDO') {
+    let nomeExibicao = formData.nomeFantasia;
+    if (!nomeExibicao || nomeExibicao.trim() === '') {
+      nomeExibicao = formData.nomeRazaoSocial;
+    }
+    tituloModalCliente = 'Alterando: ' + nomeExibicao;
+  }
+
+  const renderAcoesModal = () => {
+    if (modoModal === 'VISUALIZANDO') {
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, width: '100%' }}>
+          <Button variant="outlined" onClick={() => setModalOpen(false)}>
+            Fechar
+          </Button>
+          <Button variant="contained" color="primary" onClick={() => setModoModal('ALTERANDO')}>
+            Alterar
+          </Button>
+        </Box>
+      );
+    }
+
+    if (modoModal === 'ALTERANDO') {
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, width: '100%' }}>
+          <Button
+            onClick={() => {
+              if (initialFormData) {
+                setFormData(JSON.parse(JSON.stringify(initialFormData)));
+              }
+              setModoModal('VISUALIZANDO');
+            }}
+            disabled={salvarMutation.isPending}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => salvarMutation.mutate()}
+            disabled={salvarMutation.isPending || !isModified || !formularioValido}
+          >
+            {salvarMutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Salvar Cliente'}
+          </Button>
+        </Box>
+      );
+    }
+
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, width: '100%' }}>
+        <Button onClick={() => setModalOpen(false)} disabled={salvarMutation.isPending}>
+          Cancelar
+        </Button>
+        <Button
+          variant="contained"
+          onClick={() => salvarMutation.mutate()}
+          disabled={salvarMutation.isPending || !isModified || !formularioValido}
+        >
+          {salvarMutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Salvar Cliente'}
+        </Button>
+      </Box>
+    );
+  };
+
+  let previewAnexoCliente = (
+    <Typography variant="body2" color="text.secondary">
+      Nenhum anexo vinculado
+    </Typography>
+  );
+  if (formData.arquivo) {
+    previewAnexoCliente = (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          {formData.arquivo.nome} ({formData.arquivo.extensao.toUpperCase()})
+        </Typography>
+        <Button
+          size="small"
+          variant="text"
+          onClick={() => window.open('/api/arquivos/' + formData.arquivo!.id + '/conteudo', '_blank')}
+        >
+          Visualizar arquivo
+        </Button>
+      </Box>
+    );
+  }
 
   return (
     <Box>
@@ -704,7 +878,7 @@ export const ClientesPage: React.FC = () => {
       {/* ========================================================================= */}
       <Dialog open={modalOpen} onClose={() => setModalOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
-          {clienteEmEdicao ? `Editar Cliente: ${clienteEmEdicao.nomeRazaoSocial}` : 'Novo Cadastro de Cliente'}
+          {tituloModalCliente}
         </DialogTitle>
 
         <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 3 }}>
@@ -734,128 +908,185 @@ export const ClientesPage: React.FC = () => {
           {abaAtiva === 0 && (
             <Grid container spacing={2}>
               <Grid item xs={12} sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                  Tipo de Pessoa:
-                </Typography>
-                <ToggleButtonGroup
-                  value={formData.tipoPessoa}
-                  exclusive
-                  size="small"
-                  onChange={(_, val) => {
-                    if (val) {
-                      setFormData((prev) => ({
-                        ...prev,
-                        tipoPessoa: val,
-                        documento: '',
-                      }));
+                {isVisualizacao && (
+                  <CampoVisualizacao
+                    label="Tipo de Pessoa"
+                    valor={formData.tipoPessoa === 'PF' ? 'Pessoa Física (PF)' : 'Pessoa Jurídica (PJ)'}
+                  />
+                )}
+                {!isVisualizacao && (
+                  <>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                      Tipo de Pessoa:
+                    </Typography>
+                    <ToggleButtonGroup
+                      value={formData.tipoPessoa}
+                      exclusive
+                      size="small"
+                      disabled={salvarMutation.isPending}
+                      onChange={(_, val) => {
+                        if (val) {
+                          setFormData((prev) => ({
+                            ...prev,
+                            tipoPessoa: val,
+                            documento: '',
+                          }));
+                        }
+                      }}
+                    >
+                      <ToggleButton value="PJ">
+                        <BusinessIcon sx={{ mr: 0.5, fontSize: 18 }} /> Pessoa Jurídica (PJ)
+                      </ToggleButton>
+                      <ToggleButton value="PF">
+                        <PersonIcon sx={{ mr: 0.5, fontSize: 18 }} /> Pessoa Física (PF)
+                      </ToggleButton>
+                    </ToggleButtonGroup>
+                  </>
+                )}
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                {isVisualizacao && (
+                  <CampoVisualizacao
+                    label={formData.tipoPessoa === 'PF' ? 'CPF' : 'CNPJ'}
+                    valor={formData.documento}
+                  />
+                )}
+                {!isVisualizacao && (
+                  <TextField
+                    fullWidth
+                    required
+                    label={formData.tipoPessoa === 'PF' ? 'CPF' : 'CNPJ'}
+                    value={formData.documento}
+                    error={documentoInvalido}
+                    disabled={salvarMutation.isPending}
+                    helperText={
+                      documentoInvalido
+                        ? `${formData.tipoPessoa === 'PF' ? 'CPF' : 'CNPJ'} inválido`
+                        : 'Apenas números ou formato padrão'
                     }
-                  }}
-                >
-                  <ToggleButton value="PJ">
-                    <BusinessIcon sx={{ mr: 0.5, fontSize: 18 }} /> Pessoa Jurídica (PJ)
-                  </ToggleButton>
-                  <ToggleButton value="PF">
-                    <PersonIcon sx={{ mr: 0.5, fontSize: 18 }} /> Pessoa Física (PF)
-                  </ToggleButton>
-                </ToggleButtonGroup>
+                    onChange={(e) => {
+                      const masked =
+                        formData.tipoPessoa === 'PF'
+                          ? formatarCpf(e.target.value)
+                          : formatarCnpj(e.target.value);
+                      setFormData({ ...formData, documento: masked });
+                    }}
+                  />
+                )}
               </Grid>
 
               <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  required
-                  label={formData.tipoPessoa === 'PF' ? 'CPF' : 'CNPJ'}
-                  value={formData.documento}
-                  error={documentoInvalido}
-                  helperText={
-                    documentoInvalido
-                      ? `${formData.tipoPessoa === 'PF' ? 'CPF' : 'CNPJ'} inválido`
-                      : 'Apenas números ou formato padrão'
-                  }
-                  onChange={(e) => {
-                    const masked =
-                      formData.tipoPessoa === 'PF'
-                        ? formatarCpf(e.target.value)
-                        : formatarCnpj(e.target.value);
-                    setFormData({ ...formData, documento: masked });
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={6}>
-                {formData.tipoPessoa === 'PF' ? (
+                {isVisualizacao && formData.tipoPessoa === 'PF' && (
+                  <CampoVisualizacao label="Data de Nascimento" valor={formData.dataNascimento} />
+                )}
+                {isVisualizacao && formData.tipoPessoa !== 'PF' && (
+                  <CampoVisualizacao label="Inscrição Estadual (IE)" valor={formData.inscricaoEstadual} />
+                )}
+                {!isVisualizacao && formData.tipoPessoa === 'PF' && (
                   <TextField
                     fullWidth
                     label="Data de Nascimento"
                     type="date"
                     InputLabelProps={{ shrink: true }}
                     value={formData.dataNascimento}
+                    disabled={salvarMutation.isPending}
                     onChange={(e) => setFormData({ ...formData, dataNascimento: e.target.value })}
                   />
-                ) : (
+                )}
+                {!isVisualizacao && formData.tipoPessoa !== 'PF' && (
                   <TextField
                     fullWidth
                     label="Inscrição Estadual (IE)"
                     value={formData.inscricaoEstadual}
+                    disabled={salvarMutation.isPending}
                     onChange={(e) => setFormData({ ...formData, inscricaoEstadual: e.target.value })}
                   />
                 )}
               </Grid>
 
               <Grid item xs={12} sm={formData.tipoPessoa === 'PJ' ? 6 : 12}>
-                <TextField
-                  fullWidth
-                  required
-                  label={formData.tipoPessoa === 'PF' ? 'Nome Completo' : 'Razão Social'}
-                  value={formData.nomeRazaoSocial}
-                  onChange={(e) => setFormData({ ...formData, nomeRazaoSocial: e.target.value })}
-                />
+                {isVisualizacao && (
+                  <CampoVisualizacao
+                    label={formData.tipoPessoa === 'PF' ? 'Nome Completo' : 'Razão Social'}
+                    valor={formData.nomeRazaoSocial}
+                  />
+                )}
+                {!isVisualizacao && (
+                  <TextField
+                    fullWidth
+                    required
+                    label={formData.tipoPessoa === 'PF' ? 'Nome Completo' : 'Razão Social'}
+                    value={formData.nomeRazaoSocial}
+                    disabled={salvarMutation.isPending}
+                    onChange={(e) => setFormData({ ...formData, nomeRazaoSocial: e.target.value })}
+                  />
+                )}
               </Grid>
 
               {formData.tipoPessoa === 'PJ' && (
                 <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Nome Fantasia"
-                    value={formData.nomeFantasia}
-                    onChange={(e) => setFormData({ ...formData, nomeFantasia: e.target.value })}
-                  />
+                  {isVisualizacao && <CampoVisualizacao label="Nome Fantasia" valor={formData.nomeFantasia} />}
+                  {!isVisualizacao && (
+                    <TextField
+                      fullWidth
+                      label="Nome Fantasia"
+                      value={formData.nomeFantasia}
+                      disabled={salvarMutation.isPending}
+                      onChange={(e) => setFormData({ ...formData, nomeFantasia: e.target.value })}
+                    />
+                  )}
                 </Grid>
               )}
 
               <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="E-mail Principal"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                />
+                {isVisualizacao && <CampoVisualizacao label="E-mail Principal" valor={formData.email} />}
+                {!isVisualizacao && (
+                  <TextField
+                    fullWidth
+                    label="E-mail Principal"
+                    type="email"
+                    value={formData.email}
+                    disabled={salvarMutation.isPending}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  />
+                )}
               </Grid>
 
               <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Telefone / WhatsApp"
-                  value={formData.telefone}
-                  onChange={(e) => setFormData({ ...formData, telefone: formatarTelefone(e.target.value) })}
-                />
+                {isVisualizacao && <CampoVisualizacao label="Telefone / WhatsApp" valor={formData.telefone} />}
+                {!isVisualizacao && (
+                  <TextField
+                    fullWidth
+                    label="Telefone / WhatsApp"
+                    value={formData.telefone}
+                    disabled={salvarMutation.isPending}
+                    onChange={(e) => setFormData({ ...formData, telefone: formatarTelefone(e.target.value) })}
+                  />
+                )}
               </Grid>
 
               <Grid item xs={12}>
-                <FileUploadDropzone
-                  label="Documento / Anexo do Cliente (PDF, Imagem, TXT)"
-                  arquivoId={formData.arquivoId}
-                  arquivoInicial={formData.arquivo}
-                  onArquivoAlterado={(arq) => {
-                    if (arq) {
-                      setFormData((prev) => ({ ...prev, arquivoId: arq.id, arquivo: arq }));
-                    } else {
-                      setFormData((prev) => ({ ...prev, arquivoId: null, arquivo: null }));
-                    }
-                  }}
-                  disabled={salvarMutation.isPending}
-                />
+                {isVisualizacao && (
+                  <CampoVisualizacao label="Documento / Anexo do Cliente">
+                    {previewAnexoCliente}
+                  </CampoVisualizacao>
+                )}
+                {!isVisualizacao && (
+                  <FileUploadDropzone
+                    label="Documento / Anexo do Cliente (PDF, Imagem, TXT)"
+                    arquivoId={formData.arquivoId}
+                    arquivoInicial={formData.arquivo}
+                    onArquivoAlterado={(arq) => {
+                      if (arq) {
+                        setFormData((prev) => ({ ...prev, arquivoId: arq.id, arquivo: arq }));
+                      } else {
+                        setFormData((prev) => ({ ...prev, arquivoId: null, arquivo: null }));
+                      }
+                    }}
+                    disabled={salvarMutation.isPending}
+                  />
+                )}
               </Grid>
             </Grid>
           )}
@@ -867,9 +1098,11 @@ export const ClientesPage: React.FC = () => {
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                   Endereços Cadastrados
                 </Typography>
-                <Button startIcon={<AddIcon />} variant="outlined" size="small" onClick={handleAdicionarEndereco}>
-                  Adicionar Endereço
-                </Button>
+                {!isVisualizacao && (
+                  <Button startIcon={<AddIcon />} variant="outlined" size="small" onClick={handleAdicionarEndereco}>
+                    Adicionar Endereço
+                  </Button>
+                )}
               </Box>
 
               {formData.enderecos.length > 0 && !formData.enderecos.some((e) => e.tipo === 'PRINCIPAL') && (
@@ -890,105 +1123,139 @@ export const ClientesPage: React.FC = () => {
                         title={`Endereço ${idx + 1}`}
                         titleTypographyProps={{ variant: 'subtitle2', fontWeight: 700 }}
                         action={
-                          <IconButton size="small" color="error" onClick={() => handleRemoverEndereco(idx)}>
-                            <DeleteOutlineIcon fontSize="small" />
-                          </IconButton>
+                          !isVisualizacao ? (
+                            <IconButton size="small" color="error" onClick={() => handleRemoverEndereco(idx)}>
+                              <DeleteOutlineIcon fontSize="small" />
+                            </IconButton>
+                          ) : undefined
                         }
                         sx={{ bgcolor: 'grey.50', py: 1 }}
                       />
                       <CardContent sx={{ pt: 2 }}>
                         <Grid container spacing={2}>
                           <Grid item xs={12} sm={4}>
-                            <TextField
-                              select
-                              fullWidth
-                              size="small"
-                              label="Tipo de Endereço"
-                              value={end.tipo}
-                              onChange={(e) => handleAtualizarEndereco(idx, 'tipo', e.target.value)}
-                            >
-                              <MenuItem value="PRINCIPAL">Principal</MenuItem>
-                              <MenuItem value="COBRANCA">Cobrança</MenuItem>
-                              <MenuItem value="ENTREGA">Entrega</MenuItem>
-                            </TextField>
+                            {isVisualizacao && <CampoVisualizacao label="Tipo de Endereço" valor={end.tipo} />}
+                            {!isVisualizacao && (
+                              <TextField
+                                select
+                                fullWidth
+                                size="small"
+                                label="Tipo de Endereço"
+                                value={end.tipo}
+                                disabled={salvarMutation.isPending}
+                                onChange={(e) => handleAtualizarEndereco(idx, 'tipo', e.target.value)}
+                              >
+                                <MenuItem value="PRINCIPAL">Principal</MenuItem>
+                                <MenuItem value="COBRANCA">Cobrança</MenuItem>
+                                <MenuItem value="ENTREGA">Entrega</MenuItem>
+                              </TextField>
+                            )}
                           </Grid>
                           <Grid item xs={12} sm={4}>
-                            <TextField
-                              fullWidth
-                              required
-                              size="small"
-                              label="CEP"
-                              value={end.cep}
-                              onChange={(e) => handleAtualizarEndereco(idx, 'cep', formatarCep(e.target.value))}
-                              onBlur={(e) => handleBuscarCep(idx, e.target.value)}
-                              helperText="Tab para buscar no ViaCEP"
-                            />
+                            {isVisualizacao && <CampoVisualizacao label="CEP" valor={end.cep} />}
+                            {!isVisualizacao && (
+                              <TextField
+                                fullWidth
+                                required
+                                size="small"
+                                label="CEP"
+                                value={end.cep}
+                                disabled={salvarMutation.isPending}
+                                onChange={(e) => handleAtualizarEndereco(idx, 'cep', formatarCep(e.target.value))}
+                                onBlur={(e) => handleBuscarCep(idx, e.target.value)}
+                                helperText="Tab para buscar no ViaCEP"
+                              />
+                            )}
                           </Grid>
                           <Grid item xs={12} sm={4}>
-                            <TextField
-                              select
-                              fullWidth
-                              required
-                              size="small"
-                              label="UF"
-                              value={end.uf}
-                              onChange={(e) => handleAtualizarEndereco(idx, 'uf', e.target.value)}
-                            >
-                              {ESTADOS_BR.map((uf) => (
-                                <MenuItem key={uf} value={uf}>{uf}</MenuItem>
-                              ))}
-                            </TextField>
+                            {isVisualizacao && <CampoVisualizacao label="UF" valor={end.uf} />}
+                            {!isVisualizacao && (
+                              <TextField
+                                select
+                                fullWidth
+                                required
+                                size="small"
+                                label="UF"
+                                value={end.uf}
+                                disabled={salvarMutation.isPending}
+                                onChange={(e) => handleAtualizarEndereco(idx, 'uf', e.target.value)}
+                              >
+                                {ESTADOS_BR.map((uf) => (
+                                  <MenuItem key={uf} value={uf}>{uf}</MenuItem>
+                                ))}
+                              </TextField>
+                            )}
                           </Grid>
 
                           <Grid item xs={12} sm={8}>
-                            <TextField
-                              fullWidth
-                              required
-                              size="small"
-                              label="Logradouro (Rua, Av, etc)"
-                              value={end.logradouro}
-                              onChange={(e) => handleAtualizarEndereco(idx, 'logradouro', e.target.value)}
-                            />
+                            {isVisualizacao && <CampoVisualizacao label="Logradouro" valor={end.logradouro} />}
+                            {!isVisualizacao && (
+                              <TextField
+                                fullWidth
+                                required
+                                size="small"
+                                label="Logradouro (Rua, Av, etc)"
+                                value={end.logradouro}
+                                disabled={salvarMutation.isPending}
+                                onChange={(e) => handleAtualizarEndereco(idx, 'logradouro', e.target.value)}
+                              />
+                            )}
                           </Grid>
                           <Grid item xs={12} sm={4}>
-                            <TextField
-                              fullWidth
-                              required
-                              size="small"
-                              label="Número"
-                              value={end.numero}
-                              onChange={(e) => handleAtualizarEndereco(idx, 'numero', e.target.value)}
-                            />
+                            {isVisualizacao && <CampoVisualizacao label="Número" valor={end.numero} />}
+                            {!isVisualizacao && (
+                              <TextField
+                                fullWidth
+                                required
+                                size="small"
+                                label="Número"
+                                value={end.numero}
+                                disabled={salvarMutation.isPending}
+                                onChange={(e) => handleAtualizarEndereco(idx, 'numero', e.target.value)}
+                              />
+                            )}
                           </Grid>
 
                           <Grid item xs={12} sm={6}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              label="Complemento"
-                              value={end.complemento}
-                              onChange={(e) => handleAtualizarEndereco(idx, 'complemento', e.target.value)}
-                            />
+                            {isVisualizacao && <CampoVisualizacao label="Complemento" valor={end.complemento} />}
+                            {!isVisualizacao && (
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="Complemento"
+                                value={end.complemento}
+                                disabled={salvarMutation.isPending}
+                                onChange={(e) => handleAtualizarEndereco(idx, 'complemento', e.target.value)}
+                              />
+                            )}
                           </Grid>
                           <Grid item xs={12} sm={3}>
-                            <TextField
-                              fullWidth
-                              required
-                              size="small"
-                              label="Bairro"
-                              value={end.bairro}
-                              onChange={(e) => handleAtualizarEndereco(idx, 'bairro', e.target.value)}
-                            />
+                            {isVisualizacao && <CampoVisualizacao label="Bairro" valor={end.bairro} />}
+                            {!isVisualizacao && (
+                              <TextField
+                                fullWidth
+                                required
+                                size="small"
+                                label="Bairro"
+                                value={end.bairro}
+                                disabled={salvarMutation.isPending}
+                                onChange={(e) => handleAtualizarEndereco(idx, 'bairro', e.target.value)}
+                              />
+                            )}
                           </Grid>
                           <Grid item xs={12} sm={3}>
-                            <TextField
-                              fullWidth
-                              required
-                              size="small"
-                              label="Cidade"
-                              value={end.cidade}
-                              onChange={(e) => handleAtualizarEndereco(idx, 'cidade', e.target.value)}
-                            />
+                            {isVisualizacao && <CampoVisualizacao label="Cidade" valor={end.cidade} />}
+                            {!isVisualizacao && (
+                              <TextField
+                                fullWidth
+                                required
+                                size="small"
+                                label="Cidade"
+                                value={end.cidade}
+                                disabled={salvarMutation.isPending}
+                                onChange={(e) => handleAtualizarEndereco(idx, 'cidade', e.target.value)}
+                              />
+                            )}
                           </Grid>
                         </Grid>
                       </CardContent>
@@ -1006,9 +1273,11 @@ export const ClientesPage: React.FC = () => {
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                   Contatos Adicionais
                 </Typography>
-                <Button startIcon={<AddIcon />} variant="outlined" size="small" onClick={handleAdicionarContato}>
-                  Adicionar Contato
-                </Button>
+                {!isVisualizacao && (
+                  <Button startIcon={<AddIcon />} variant="outlined" size="small" onClick={handleAdicionarContato}>
+                    Adicionar Contato
+                  </Button>
+                )}
               </Box>
 
               {formData.contatos.length === 0 ? (
@@ -1023,51 +1292,69 @@ export const ClientesPage: React.FC = () => {
                         title={`Contato ${idx + 1}`}
                         titleTypographyProps={{ variant: 'subtitle2', fontWeight: 700 }}
                         action={
-                          <IconButton size="small" color="error" onClick={() => handleRemoverContato(idx)}>
-                            <DeleteOutlineIcon fontSize="small" />
-                          </IconButton>
+                          !isVisualizacao ? (
+                            <IconButton size="small" color="error" onClick={() => handleRemoverContato(idx)}>
+                              <DeleteOutlineIcon fontSize="small" />
+                            </IconButton>
+                          ) : undefined
                         }
                         sx={{ bgcolor: 'grey.50', py: 1 }}
                       />
                       <CardContent sx={{ pt: 2 }}>
                         <Grid container spacing={2}>
                           <Grid item xs={12} sm={6}>
-                            <TextField
-                              fullWidth
-                              required
-                              size="small"
-                              label="Nome do Contato"
-                              value={cto.nome}
-                              onChange={(e) => handleAtualizarContato(idx, 'nome', e.target.value)}
-                            />
+                            {isVisualizacao && <CampoVisualizacao label="Nome do Contato" valor={cto.nome} />}
+                            {!isVisualizacao && (
+                              <TextField
+                                fullWidth
+                                required
+                                size="small"
+                                label="Nome do Contato"
+                                value={cto.nome}
+                                disabled={salvarMutation.isPending}
+                                onChange={(e) => handleAtualizarContato(idx, 'nome', e.target.value)}
+                              />
+                            )}
                           </Grid>
                           <Grid item xs={12} sm={6}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              label="Cargo / Função"
-                              value={cto.cargo}
-                              onChange={(e) => handleAtualizarContato(idx, 'cargo', e.target.value)}
-                            />
+                            {isVisualizacao && <CampoVisualizacao label="Cargo / Função" valor={cto.cargo} />}
+                            {!isVisualizacao && (
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="Cargo / Função"
+                                value={cto.cargo}
+                                disabled={salvarMutation.isPending}
+                                onChange={(e) => handleAtualizarContato(idx, 'cargo', e.target.value)}
+                              />
+                            )}
                           </Grid>
                           <Grid item xs={12} sm={6}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              label="E-mail"
-                              type="email"
-                              value={cto.email}
-                              onChange={(e) => handleAtualizarContato(idx, 'email', e.target.value)}
-                            />
+                            {isVisualizacao && <CampoVisualizacao label="E-mail" valor={cto.email} />}
+                            {!isVisualizacao && (
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="E-mail"
+                                type="email"
+                                value={cto.email}
+                                disabled={salvarMutation.isPending}
+                                onChange={(e) => handleAtualizarContato(idx, 'email', e.target.value)}
+                              />
+                            )}
                           </Grid>
                           <Grid item xs={12} sm={6}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              label="Telefone / WhatsApp"
-                              value={cto.telefone}
-                              onChange={(e) => handleAtualizarContato(idx, 'telefone', formatarTelefone(e.target.value))}
-                            />
+                            {isVisualizacao && <CampoVisualizacao label="Telefone / WhatsApp" valor={cto.telefone} />}
+                            {!isVisualizacao && (
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="Telefone / WhatsApp"
+                                value={cto.telefone}
+                                disabled={salvarMutation.isPending}
+                                onChange={(e) => handleAtualizarContato(idx, 'telefone', formatarTelefone(e.target.value))}
+                              />
+                            )}
                           </Grid>
                         </Grid>
                       </CardContent>
@@ -1080,16 +1367,7 @@ export const ClientesPage: React.FC = () => {
         </DialogContent>
 
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={() => setModalOpen(false)} disabled={salvarMutation.isPending}>
-            Cancelar
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => salvarMutation.mutate()}
-            disabled={salvarMutation.isPending || !isModified || !formularioValido}
-          >
-            {salvarMutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Salvar Cliente'}
-          </Button>
+          {renderAcoesModal()}
         </DialogActions>
       </Dialog>
 
