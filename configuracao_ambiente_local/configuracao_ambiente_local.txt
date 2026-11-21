@@ -21,4 +21,5 @@ docker 4.99
 banco de dados:
 	erp_user
 	erp_password123
-	
+
+Todos os comandos como NPM install devem ser rodados dentro do linux no windows.

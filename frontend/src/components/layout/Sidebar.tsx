@@ -53,7 +53,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ open }) => {
         </Typography>
         <List>
           {menuItems.map((item) => {
-            const isSelected = location.pathname === item.path;
+            const isSelected = item.path === '/'
+              ? location.pathname === '/'
+              : location.pathname.startsWith(item.path);
             return (
               <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
                 <ListItemButton
