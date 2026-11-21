@@ -25,10 +25,35 @@ if (-not $wslDir) {
 Write-Host "[*] Diretório WSL Ubuntu: $wslDir" -ForegroundColor Gray
 Write-Host ""
 
-# 1. Subir o Oracle Database Free no Docker via WSL Ubuntu
-Write-Host "[*] Verificando Oracle Database Free via Docker no WSL Ubuntu..." -ForegroundColor Yellow
-wsl -d Ubuntu -e bash -lic "cd '$wslDir' && docker compose up -d"
-Write-Host ""
+# 1. Subir o Oracle Database Free no Docker (Windows / Docker Desktop)
+Write-Host "[*] Verificando e subindo Oracle Database Free via Docker..." -ForegroundColor Yellow
+docker compose up -d
+
+Write-Host "[*] Aguardando o banco Oracle inicializar completamente na porta 1521..." -ForegroundColor Yellow
+$oracleReady = $false
+$maxOracleAttempts = 30
+$oracleAttempt = 0
+
+while (-not $oracleReady -and $oracleAttempt -lt $maxOracleAttempts) {
+    Start-Sleep -Seconds 2
+    $oracleAttempt++
+    try {
+        $check = ("SELECT 1 FROM DUAL;" | docker exec -i erp-oracle-free sqlplus -S erp_user/erp_password123@//localhost:1521/FREEPDB1 2>$null)
+        if ($check -match "1") {
+            $oracleReady = $true
+        } else {
+            Write-Host "." -NoNewline -ForegroundColor DarkYellow
+        }
+    } catch {
+        Write-Host "." -NoNewline -ForegroundColor DarkYellow
+    }
+}
+
+if ($oracleReady) {
+    Write-Host "`n[OK] Oracle Database Free está pronto e autenticando (erp_user)!`n" -ForegroundColor Green
+} else {
+    Write-Host "`n[!] Aviso: Prosseguindo com a inicialização do backend...`n" -ForegroundColor Yellow
+}
 
 # 2. Iniciar o Backend no WSL Ubuntu em uma nova janela
 Write-Host "[*] Iniciando o Backend Spring Boot no WSL Ubuntu (porta 8080)..." -ForegroundColor Yellow
