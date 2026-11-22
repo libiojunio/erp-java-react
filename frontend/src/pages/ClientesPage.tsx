@@ -22,6 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { dataGridPtBR } from '../utils/dataGridPtBR';
 import { api } from '../services/api';
+import { CustomPaginationActions } from '../components/common/CustomPaginationActions';
 import {
   formatarCnpj,
   formatarDocumento,
@@ -342,6 +343,7 @@ export const ClientesPage: React.FC = () => {
           slotProps={{
             pagination: {
               labelRowsPerPage: 'Registros por página:',
+              ActionsComponent: CustomPaginationActions,
             },
           }}
           initialState={{

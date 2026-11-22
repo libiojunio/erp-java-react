@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { dataGridPtBR } from '../utils/dataGridPtBR';
+import { CustomPaginationActions } from '../components/common/CustomPaginationActions';
 import { ArquivoInfo } from '../components/common/FileUploadDropzone';
 
 interface EmpresaItem {
@@ -220,6 +221,7 @@ export const EmpresasPage: React.FC = () => {
           slotProps={{
             pagination: {
               labelRowsPerPage: 'Registros por página:',
+              ActionsComponent: CustomPaginationActions,
             },
           }}
           initialState={{

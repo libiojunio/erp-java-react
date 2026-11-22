@@ -1,4 +1,5 @@
 import { createTheme } from '@mui/material/styles';
+import { CustomPaginationActions } from '../components/common/CustomPaginationActions';
 
 export const theme = createTheme({
   palette: {
@@ -64,6 +65,7 @@ export const theme = createTheme({
     MuiTablePagination: {
       defaultProps: {
         labelRowsPerPage: 'Registros por página:',
+        ActionsComponent: CustomPaginationActions,
         labelDisplayedRows: ({ from, to, count }) =>
           `${from}–${to} de ${count !== -1 ? count : `mais de ${to}`}`,
       },
