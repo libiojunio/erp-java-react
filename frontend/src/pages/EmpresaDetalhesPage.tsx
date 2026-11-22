@@ -40,7 +40,9 @@ const ESTADOS_BR = [
 ];
 
 function formatarCnpj(cnpj: string): string {
-  if (!cnpj) return '';
+  if (!cnpj) {
+    return '';
+  }
   const digits = cnpj.replace(/\D/g, '');
   if (digits.length === 14) {
     return digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
@@ -49,7 +51,9 @@ function formatarCnpj(cnpj: string): string {
 }
 
 function formatarCep(cep: string): string {
-  if (!cep) return '';
+  if (!cep) {
+    return '';
+  }
   const digits = cep.replace(/\D/g, '');
   if (digits.length === 8) {
     return digits.replace(/^(\d{5})(\d{3})$/, '$1-$2');
@@ -146,7 +150,9 @@ export const EmpresaDetalhesPage: React.FC = () => {
   // Busca automática do CEP via ViaCEP
   const handleBuscarCep = async (cepDigitado: string) => {
     const cepLimpo = cepDigitado.replace(/\D/g, '');
-    if (cepLimpo.length !== 8) return;
+    if (cepLimpo.length !== 8) {
+      return;
+    }
 
     try {
       const res = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
@@ -166,7 +172,9 @@ export const EmpresaDetalhesPage: React.FC = () => {
   };
 
   const isModified = useMemo(() => {
-    if (!initialFormData) return false;
+    if (!initialFormData) {
+      return false;
+    }
     return JSON.stringify(formData) !== JSON.stringify(initialFormData);
   }, [formData, initialFormData]);
 

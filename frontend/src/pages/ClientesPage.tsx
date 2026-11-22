@@ -83,9 +83,15 @@ export const ClientesPage: React.FC = () => {
     queryFn: async () => {
       const response = await api.get('/clientes?sortProperty=id&sortDirection=DESC');
       const dados = response.data?.dados;
-      if (Array.isArray(dados)) return dados;
-      if (dados && Array.isArray(dados.content)) return dados.content;
-      if (dados && Array.isArray(dados.conteudo)) return dados.conteudo;
+      if (Array.isArray(dados)) {
+        return dados;
+      }
+      if (dados && Array.isArray(dados.content)) {
+        return dados.content;
+      }
+      if (dados && Array.isArray(dados.conteudo)) {
+        return dados.conteudo;
+      }
       return [];
     },
     enabled: !!empresaAtiva,
@@ -93,7 +99,9 @@ export const ClientesPage: React.FC = () => {
 
   // Filtro em memória
   const listaClientes = useMemo(() => {
-    if (!Array.isArray(clientes)) return [];
+    if (!Array.isArray(clientes)) {
+      return [];
+    }
     return clientes.filter((c) => {
       if (filtroSituacao !== 'TODOS' && c.situacao !== filtroSituacao) {
         return false;
@@ -308,6 +316,28 @@ export const ClientesPage: React.FC = () => {
                 bgcolor: 'action.hover',
               },
             },
+            '& .MuiTablePagination-toolbar': {
+              paddingLeft: 2,
+            },
+            '& .MuiTablePagination-spacer': {
+              flex: '1 1 auto',
+              order: 2,
+            },
+            '& .MuiTablePagination-selectLabel': {
+              order: 0,
+              margin: 0,
+              marginRight: 1,
+            },
+            '& .MuiTablePagination-input': {
+              order: 1,
+              marginRight: 2,
+            },
+            '& .MuiTablePagination-displayedRows': {
+              order: 3,
+            },
+            '& .MuiTablePagination-actions': {
+              order: 4,
+            },
           }}
           slotProps={{
             pagination: {
@@ -318,7 +348,7 @@ export const ClientesPage: React.FC = () => {
             sorting: { sortModel: [{ field: 'id', sort: 'desc' }] },
             pagination: { paginationModel: { pageSize: 10 } },
           }}
-          pageSizeOptions={[10, 25, 50]}
+          pageSizeOptions={[10, 20, 50, 100, 200]}
           disableRowSelectionOnClick
         />
       </Paper>

@@ -251,7 +251,9 @@ export const ClienteDetalhesPage: React.FC = () => {
   // Busca de CEP no ViaCEP
   const handleBuscarCep = async (index: number, cepDigitado: string) => {
     const cepLimpo = limparDigitos(cepDigitado);
-    if (cepLimpo.length !== 8) return;
+    if (cepLimpo.length !== 8) {
+      return;
+    }
 
     try {
       const res = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
@@ -307,14 +309,18 @@ export const ClienteDetalhesPage: React.FC = () => {
 
   // Verificação de modificação do formulário
   const isModified = useMemo(() => {
-    if (!initialFormData) return false;
+    if (!initialFormData) {
+      return false;
+    }
     return JSON.stringify(formData) !== JSON.stringify(initialFormData);
   }, [formData, initialFormData]);
 
   // Validação do Documento em tempo real
   const documentoInvalido = useMemo(() => {
     const docLimpo = limparDigitos(formData.documento);
-    if (!docLimpo) return false;
+    if (!docLimpo) {
+      return false;
+    }
     if (formData.tipoPessoa === 'PF') {
       return docLimpo.length === 11 && !validarCpf(docLimpo);
     } else {
@@ -324,17 +330,25 @@ export const ClienteDetalhesPage: React.FC = () => {
 
   // Validação geral para habilitar o botão Salvar
   const formularioValido = useMemo(() => {
-    if (!formData.nomeRazaoSocial.trim()) return false;
+    if (!formData.nomeRazaoSocial.trim()) {
+      return false;
+    }
     const docLimpo = limparDigitos(formData.documento);
     if (formData.tipoPessoa === 'PF') {
-      if (docLimpo.length !== 11 || !validarCpf(docLimpo)) return false;
+      if (docLimpo.length !== 11 || !validarCpf(docLimpo)) {
+        return false;
+      }
     } else {
-      if (docLimpo.length !== 14 || !validarCnpj(docLimpo)) return false;
+      if (docLimpo.length !== 14 || !validarCnpj(docLimpo)) {
+        return false;
+      }
     }
 
     if (formData.enderecos.length > 0) {
       const temPrincipal = formData.enderecos.some((e) => e.tipo === 'PRINCIPAL');
-      if (!temPrincipal) return false;
+      if (!temPrincipal) {
+        return false;
+      }
 
       for (const end of formData.enderecos) {
         if (
@@ -351,7 +365,9 @@ export const ClienteDetalhesPage: React.FC = () => {
     }
 
     for (const cto of formData.contatos) {
-      if (!cto.nome.trim()) return false;
+      if (!cto.nome.trim()) {
+        return false;
+      }
     }
 
     return true;

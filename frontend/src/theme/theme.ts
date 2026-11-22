@@ -67,6 +67,30 @@ export const theme = createTheme({
         labelDisplayedRows: ({ from, to, count }) =>
           `${from}–${to} de ${count !== -1 ? count : `mais de ${to}`}`,
       },
+      styleOverrides: {
+        toolbar: {
+          paddingLeft: '16px',
+        },
+        spacer: {
+          flex: '1 1 auto',
+          order: 2,
+        },
+        selectLabel: {
+          order: 0,
+          margin: 0,
+          marginRight: '8px',
+        },
+        input: {
+          order: 1,
+          marginRight: '16px',
+        },
+        displayedRows: {
+          order: 3,
+        },
+        actions: {
+          order: 4,
+        },
+      },
     },
   },
 });

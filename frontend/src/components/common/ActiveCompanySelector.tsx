@@ -13,7 +13,9 @@ export const ActiveCompanySelector: React.FC = () => {
 
   const handleChange = async (event: SelectChangeEvent<number>) => {
     const novoId = Number(event.target.value);
-    if (novoId === empresaAtiva.id) return;
+    if (novoId === empresaAtiva.id) {
+      return;
+    }
 
     setLoading(true);
     try {
