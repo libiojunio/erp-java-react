@@ -303,14 +303,19 @@ export const ClientesPage: React.FC = () => {
       </Paper>
 
       {/* Tabela DataGrid com clique na linha para visualizar */}
-      <Paper sx={{ width: '100%', height: 530 }} elevation={1}>
+      <Paper sx={{ width: '100%' }} elevation={1}>
         <DataGrid
+          autoHeight
           rows={listaClientes}
           columns={columns}
           loading={isLoading || isFetching}
           localeText={dataGridPtBR}
           onRowClick={(params) => navigate(`/clientes/visualizar/${params.row.id}`)}
           sx={{
+            border: 'none',
+            '& .MuiDataGrid-virtualScroller': {
+              overflowY: 'hidden',
+            },
             '& .MuiDataGrid-row': {
               cursor: 'pointer',
               '&:hover': {

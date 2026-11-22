@@ -181,14 +181,19 @@ export const EmpresasPage: React.FC = () => {
       </Box>
 
       {/* Tabela DataGrid com clique na linha para visualização */}
-      <Paper sx={{ width: '100%', height: 500 }} elevation={1}>
+      <Paper sx={{ width: '100%' }} elevation={1}>
         <DataGrid
+          autoHeight
           rows={empresas}
           columns={columns}
           loading={isLoading || isFetching}
           localeText={dataGridPtBR}
           onRowClick={(params) => navigate(`/empresas/visualizar/${params.row.id}`)}
           sx={{
+            border: 'none',
+            '& .MuiDataGrid-virtualScroller': {
+              overflowY: 'hidden',
+            },
             '& .MuiDataGrid-row': {
               cursor: 'pointer',
               '&:hover': {
