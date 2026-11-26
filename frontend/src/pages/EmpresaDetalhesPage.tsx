@@ -24,21 +24,15 @@ import BlockIcon from '@mui/icons-material/Block';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import EditIcon from '@mui/icons-material/Edit';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { FileUploadDropzone, ArquivoInfo } from '../components/common/FileUploadDropzone';
 import { CampoVisualizacao } from '../components/common/CampoVisualizacao';
-import { EmpresaForm } from '../types/empresa';
+import { EmpresaForm, EmpresaDadosIniciais } from '../types/empresa';
 
 function SlideTransition(props: SlideProps) {
   return <Slide {...props} direction="left" />;
 }
-
-const ESTADOS_BR = [
-  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
-  'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
-  'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
-];
 
 function formatarCnpj(cnpj: string): string {
   if (!cnpj) {
@@ -101,7 +95,41 @@ export const EmpresaDetalhesPage: React.FC = () => {
     severity: 'success',
   });
 
-  // Carregar dados da empresa
+  // Request inicial exclusivo da tela de detalhes que traz dados e opções do backend
+  const { data: dadosIniciais } = useQuery<EmpresaDadosIniciais>({
+    queryKey: ['empresas-dados-iniciais'],
+    queryFn: async () => {
+      const res = await api.get('/empresas/dadosIniciais');
+      return res.data?.dados;
+    },
+  });
+
+  // Carregamento deduplicado dos dados da empresa (evita 2 requests em StrictMode)
+  const {
+    data: empresaCarregada,
+    isLoading: carregandoQuery,
+    refetch: refetchEmpresa,
+  } = useQuery({
+    queryKey: ['empresa', id],
+    queryFn: async () => {
+      if (!id || isNovo) {
+        return null;
+      }
+      const res = await api.get(`/empresas/${id}`);
+      return res.data?.dados;
+    },
+    enabled: Boolean(id && !isNovo),
+    staleTime: 0,
+  });
+
+  // Sempre que a rota mudar (ex.: de /visualizar/:id para /editar/:id), recarrega para obter dados e versão atualizados
+  useEffect(() => {
+    if (id && !isNovo) {
+      refetchEmpresa();
+    }
+  }, [location.pathname, id, isNovo, refetchEmpresa]);
+
+  // Sincroniza dados da empresa para o estado local do formulário
   useEffect(() => {
     if (isNovo) {
       setFormData(formVazio);
@@ -111,42 +139,34 @@ export const EmpresaDetalhesPage: React.FC = () => {
       return;
     }
 
-    if (id) {
-      setCarregando(true);
+    if (empresaCarregada) {
+      setSituacaoEmpresa(empresaCarregada.situacao || 'ATIVO');
+      const loaded = {
+        razaoSocial: empresaCarregada.razaoSocial || '',
+        nomeFantasia: empresaCarregada.nomeFantasia || '',
+        cnpj: formatarCnpj(empresaCarregada.cnpj || ''),
+        inscricaoEstadual: empresaCarregada.inscricaoEstadual || '',
+        cep: formatarCep(empresaCarregada.cep || ''),
+        logradouro: empresaCarregada.logradouro || '',
+        numero: empresaCarregada.numero || '',
+        complemento: empresaCarregada.complemento || '',
+        bairro: empresaCarregada.bairro || '',
+        cidade: empresaCarregada.cidade || '',
+        uf: empresaCarregada.uf || 'SP',
+        versao: empresaCarregada.versao,
+        arquivoId: empresaCarregada.arquivoId || null,
+        arquivo: empresaCarregada.arquivo || null,
+      };
+      setFormData(loaded);
+      setInitialFormData(loaded);
       setFormErro(null);
-      api
-        .get(`/empresas/${id}`)
-        .then((res) => {
-          const emp = res.data?.dados;
-          if (emp) {
-            setSituacaoEmpresa(emp.situacao || 'ATIVO');
-            const loaded = {
-              razaoSocial: emp.razaoSocial || '',
-              nomeFantasia: emp.nomeFantasia || '',
-              cnpj: formatarCnpj(emp.cnpj || ''),
-              inscricaoEstadual: emp.inscricaoEstadual || '',
-              cep: formatarCep(emp.cep || ''),
-              logradouro: emp.logradouro || '',
-              numero: emp.numero || '',
-              complemento: emp.complemento || '',
-              bairro: emp.bairro || '',
-              cidade: emp.cidade || '',
-              uf: emp.uf || 'SP',
-              arquivoId: emp.arquivoId || null,
-              arquivo: emp.arquivo || null,
-            };
-            setFormData(loaded);
-            setInitialFormData(loaded);
-          }
-        })
-        .catch((err) => {
-          setFormErro(err.response?.data?.mensagem || 'Erro ao carregar dados da empresa.');
-        })
-        .finally(() => {
-          setCarregando(false);
-        });
     }
-  }, [id, isNovo]);
+  }, [empresaCarregada, isNovo]);
+
+  // Sincroniza estado de carregamento
+  useEffect(() => {
+    setCarregando(carregandoQuery);
+  }, [carregandoQuery]);
 
   // Busca automática do CEP via ViaCEP
   const handleBuscarCep = async (cepDigitado: string) => {
@@ -466,9 +486,9 @@ export const EmpresaDetalhesPage: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, uf: e.target.value })}
                 disabled={salvarMutation.isPending}
               >
-                {ESTADOS_BR.map((uf) => (
-                  <MenuItem key={uf} value={uf}>
-                    {uf}
+                {(dadosIniciais?.ufs || []).map((u) => (
+                  <MenuItem key={u.valor} value={u.valor}>
+                    {u.descricao}
                   </MenuItem>
                 ))}
               </TextField>

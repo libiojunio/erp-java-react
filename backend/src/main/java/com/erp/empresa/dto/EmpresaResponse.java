@@ -34,6 +34,7 @@ public class EmpresaResponse {
     private String criadoPor;
     private LocalDateTime alteradoEm;
     private String alteradoPor;
+    private Long versao;
 
     public static EmpresaResponse fromEntity(Empresa empresa) {
         return fromEntity(empresa, null);
@@ -63,6 +64,7 @@ public class EmpresaResponse {
                 .criadoPor(empresa.getCriadoPor())
                 .alteradoEm(empresa.getAlteradoEm())
                 .alteradoPor(empresa.getAlteradoPor())
+                .versao(empresa.getVersao())
                 .build();
     }
 }

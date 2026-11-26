@@ -2,14 +2,15 @@ package com.erp.empresa.service;
 
 import com.erp.arquivo.dto.ArquivoDto;
 import com.erp.arquivo.service.ArquivoService;
+import com.erp.comum.domain.enums.UfEnum;
 import com.erp.comum.dto.OpcaoSelectDto;
 import com.erp.comum.exception.BusinessException;
 import com.erp.comum.exception.ResourceNotFoundException;
 import com.erp.comum.validation.CnpjValidator;
 import com.erp.empresa.domain.Empresa;
 import com.erp.empresa.domain.enums.SituacaoEmpresaEnum;
+import com.erp.empresa.dto.EmpresaDadosIniciaisResponse;
 import com.erp.empresa.dto.EmpresaFiltroForm;
-import com.erp.empresa.dto.EmpresaOpcoesResponse;
 import com.erp.empresa.dto.EmpresaRequest;
 import com.erp.empresa.dto.EmpresaResponse;
 import com.erp.empresa.repository.EmpresaRepository;
@@ -128,6 +129,10 @@ public class EmpresaService {
     public EmpresaResponse atualizar(Long id, EmpresaRequest request) {
         Empresa empresa = empresaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Empresa não encontrada com ID: " + id));
+
+        if (request.getVersao() != null && !request.getVersao().equals(empresa.getVersao())) {
+            throw new BusinessException("Registro foi modificado por outro usuário (concorrência detectada). Por favor, atualize a tela e tente novamente.");
+        }
 
         String cnpjLimpo = normalizarCnpj(request.getCnpj());
 
@@ -272,13 +277,18 @@ public class EmpresaService {
     }
 
     @Transactional(readOnly = true)
-    public EmpresaOpcoesResponse obterOpcoes() {
+    public EmpresaDadosIniciaisResponse obterDadosIniciais() {
         List<OpcaoSelectDto> situacoes = Arrays.stream(SituacaoEmpresaEnum.values())
                 .map(s -> new OpcaoSelectDto(s.name(), s.getDescricao()))
                 .collect(Collectors.toList());
 
-        return EmpresaOpcoesResponse.builder()
+        List<OpcaoSelectDto> ufs = Arrays.stream(UfEnum.values())
+                .map(u -> new OpcaoSelectDto(u.name(), u.name() + " - " + u.getDescricao()))
+                .collect(Collectors.toList());
+
+        return EmpresaDadosIniciaisResponse.builder()
                 .situacoes(situacoes)
+                .ufs(ufs)
                 .build();
     }
 }

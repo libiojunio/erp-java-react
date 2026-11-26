@@ -61,4 +61,7 @@ public class EmpresaRequest {
 
     @Schema(description = "ID do arquivo/anexo (logo ou documento da empresa)", example = "1")
     private Long arquivoId;
+
+    @Schema(description = "Versão do registro para controle de concorrência otimista", example = "0")
+    private Long versao;
 }

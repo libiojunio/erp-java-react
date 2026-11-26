@@ -2,9 +2,11 @@ package com.erp.comum.exception;
 
 import com.erp.comum.dto.ApiErrorResponse;
 import com.erp.comum.dto.CampoErro;
+import jakarta.persistence.OptimisticLockException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
@@ -83,6 +85,18 @@ public class GlobalExceptionHandler {
                 .path(request.getRequestURI())
                 .build();
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
+    @ExceptionHandler({ObjectOptimisticLockingFailureException.class, OptimisticLockException.class})
+    public ResponseEntity<ApiErrorResponse> handleOptimisticLockingFailure(Exception ex, HttpServletRequest request) {
+        ApiErrorResponse error = ApiErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.CONFLICT.value())
+                .erro("Concorrência Detectada")
+                .mensagem("Registro foi modificado por outro usuário (concorrência detectada). Por favor, atualize a tela e tente novamente.")
+                .path(request.getRequestURI())
+                .build();
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
     @ExceptionHandler(Exception.class)

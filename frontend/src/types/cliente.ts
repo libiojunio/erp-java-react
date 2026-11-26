@@ -22,6 +22,19 @@ export interface ContatoForm {
   telefone: string;
 }
 
+export interface OpcaoSelect {
+  valor: string;
+  descricao: string;
+}
+
+export interface ClienteDadosIniciais {
+  situacoes: OpcaoSelect[];
+  tiposPessoa: OpcaoSelect[];
+  tiposEndereco: OpcaoSelect[];
+  tiposContato: OpcaoSelect[];
+  ufs: OpcaoSelect[];
+}
+
 export interface ClienteItem {
   id: number;
   tipoPessoa: TipoPessoa;
@@ -34,6 +47,7 @@ export interface ClienteItem {
   telefone?: string;
   situacao: string;
   empresaId: number;
+  versao?: number;
   enderecos?: EnderecoForm[];
   contatos?: ContatoForm[];
   arquivoId?: number | null;
@@ -49,6 +63,7 @@ export interface ClienteForm {
   dataNascimento: string;
   email: string;
   telefone: string;
+  versao?: number;
   arquivoId?: number | null;
   arquivo?: ArquivoInfo | null;
   enderecos: EnderecoForm[];

@@ -2,15 +2,11 @@ import React, { useState } from 'react';
 import {
   Box,
   Chip,
-  TextField,
-  MenuItem,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { GridColDef } from '@mui/x-data-grid';
-import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../services/api';
 import { EmpresaItem } from '../types';
 import { AppDataTable } from '../components/table/AppDataTable';
 import { IdChip } from '../components/table/IdChip';
@@ -33,25 +29,6 @@ export const EmpresasPage: React.FC<EmpresasPageProps> = ({
 
   // Estado para termo de busca
   const [filtroTermo, setFiltroTermo] = useState<string>('');
-  const [filtroSituacao, setFiltroSituacao] = useState<string>('TODOS');
-
-  // Request inicial que traz as opções de campos select (do backend com ENUM)
-  const { data: opcoesData } = useQuery({
-    queryKey: ['empresas-opcoes'],
-    queryFn: async () => {
-      try {
-        const response = await api.get('/empresas/opcoes');
-        return response.data?.dados;
-      } catch (err) {
-        return null;
-      }
-    },
-  });
-
-  const situacoesDisponiveis = opcoesData?.situacoes || [
-    { valor: 'ATIVO', descricao: 'Ativo' },
-    { valor: 'INATIVO', descricao: 'Inativo' },
-  ];
 
   // Colunas do DataGrid (com ID Chip clicável)
   const columns: GridColDef<EmpresaItem>[] = [
@@ -149,28 +126,6 @@ export const EmpresasPage: React.FC<EmpresasPageProps> = ({
         searchPlaceholder="Pesquisar por Razão Social, Nome Fantasia ou CNPJ..."
         searchValue={filtroTermo}
         onSearchChange={setFiltroTermo}
-        extraParams={{
-          situacao: filtroSituacao !== 'TODOS' ? filtroSituacao : undefined,
-        }}
-        extraFilters={
-          <TextField
-            select
-            fullWidth
-            size="small"
-            label="Situação"
-            value={filtroSituacao}
-            onChange={(e) => {
-              setFiltroSituacao(e.target.value);
-            }}
-          >
-            <MenuItem value="TODOS">Todos</MenuItem>
-            {situacoesDisponiveis.map((sit: any) => (
-              <MenuItem key={sit.valor} value={sit.valor}>
-                {sit.descricao}
-              </MenuItem>
-            ))}
-          </TextField>
-        }
         iniciarPesquisando={iniciarPesquisando}
         reloadTrigger={recarregarChave}
       />

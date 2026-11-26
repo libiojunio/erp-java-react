@@ -2,8 +2,8 @@ package com.erp.empresa.controller;
 
 import com.erp.comum.dto.ApiResponse;
 import com.erp.empresa.dto.AlterarSituacaoRequest;
+import com.erp.empresa.dto.EmpresaDadosIniciaisResponse;
 import com.erp.empresa.dto.EmpresaFiltroForm;
-import com.erp.empresa.dto.EmpresaOpcoesResponse;
 import com.erp.empresa.dto.EmpresaRequest;
 import com.erp.empresa.dto.EmpresaResponse;
 import com.erp.empresa.service.EmpresaService;
@@ -38,11 +38,11 @@ public class EmpresaController {
         return ResponseEntity.ok(ApiResponse.sucesso(pageResult));
     }
 
-    @GetMapping("/opcoes")
-    @Operation(summary = "Obtém as opções de enum e domínios para campos select da tela de empresas")
-    public ResponseEntity<ApiResponse<EmpresaOpcoesResponse>> obterOpcoes() {
-        EmpresaOpcoesResponse opcoes = empresaService.obterOpcoes();
-        return ResponseEntity.ok(ApiResponse.sucesso(opcoes));
+    @GetMapping("/dadosIniciais")
+    @Operation(summary = "Obtém os dados iniciais e opções para campos select da tela de empresas")
+    public ResponseEntity<ApiResponse<EmpresaDadosIniciaisResponse>> obterDadosIniciais() {
+        EmpresaDadosIniciaisResponse dadosIniciais = empresaService.obterDadosIniciais();
+        return ResponseEntity.ok(ApiResponse.sucesso(dadosIniciais));
     }
 
     @GetMapping("/{id}")

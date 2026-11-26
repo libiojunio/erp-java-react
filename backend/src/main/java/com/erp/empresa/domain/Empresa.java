@@ -56,4 +56,9 @@ public class Empresa extends AuditableEntity {
 
     @Column(name = "arquivo_id")
     private Long arquivoId;
+
+    @Version
+    @Column(name = "versao", nullable = false)
+    @Builder.Default
+    private Long versao = 0L;
 }

@@ -35,11 +35,11 @@ public class ClienteController {
         return ResponseEntity.ok(ApiResponse.sucesso(pagina));
     }
 
-    @GetMapping("/opcoes")
-    @Operation(summary = "Obtém as opções de enum e domínios para campos select da tela de clientes")
-    public ResponseEntity<ApiResponse<ClienteOpcoesResponse>> obterOpcoes() {
-        ClienteOpcoesResponse opcoes = clienteService.obterOpcoes();
-        return ResponseEntity.ok(ApiResponse.sucesso(opcoes));
+    @GetMapping("/dadosIniciais")
+    @Operation(summary = "Obtém os dados iniciais e opções para campos select da tela de clientes")
+    public ResponseEntity<ApiResponse<ClienteDadosIniciaisResponse>> obterDadosIniciais() {
+        ClienteDadosIniciaisResponse dadosIniciais = clienteService.obterDadosIniciais();
+        return ResponseEntity.ok(ApiResponse.sucesso(dadosIniciais));
     }
 
     @GetMapping("/todos")

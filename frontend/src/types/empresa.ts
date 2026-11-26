@@ -1,5 +1,10 @@
 import { ArquivoInfo } from './arquivo';
 
+export interface EmpresaDadosIniciais {
+  situacoes: { valor: string; descricao: string }[];
+  ufs: { valor: string; descricao: string }[];
+}
+
 export interface EmpresaItem {
   id: number;
   razaoSocial: string;
@@ -14,6 +19,7 @@ export interface EmpresaItem {
   cidade?: string;
   uf?: string;
   situacao: string;
+  versao?: number;
   arquivoId?: number | null;
   arquivo?: ArquivoInfo | null;
 }
@@ -30,6 +36,7 @@ export interface EmpresaForm {
   bairro: string;
   cidade: string;
   uf: string;
+  versao?: number;
   arquivoId?: number | null;
   arquivo?: ArquivoInfo | null;
 }

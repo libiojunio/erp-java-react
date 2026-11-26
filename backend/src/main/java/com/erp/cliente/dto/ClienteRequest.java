@@ -40,6 +40,8 @@ public class ClienteRequest {
 
     private Long arquivoId;
 
+    private Long versao;
+
     @Valid
     @Builder.Default
     private List<ClienteEnderecoDto> enderecos = new ArrayList<>();

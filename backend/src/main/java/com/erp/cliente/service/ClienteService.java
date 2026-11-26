@@ -11,6 +11,7 @@ import com.erp.cliente.domain.enums.TipoEnderecoEnum;
 import com.erp.cliente.domain.enums.TipoPessoaEnum;
 import com.erp.cliente.dto.*;
 import com.erp.cliente.repository.ClienteRepository;
+import com.erp.comum.domain.enums.UfEnum;
 import com.erp.comum.dto.OpcaoSelectDto;
 import com.erp.comum.exception.BusinessException;
 import com.erp.comum.exception.ResourceNotFoundException;
@@ -161,6 +162,10 @@ public class ClienteService {
                 .orElseThrow(() -> new ResourceNotFoundException("Cliente não encontrado com ID: " + id));
 
         validarDadosCliente(request, id, empresaId);
+
+        if (request.getVersao() != null && !request.getVersao().equals(cliente.getVersao())) {
+            throw new BusinessException("Registro foi modificado por outro usuário (concorrência detectada). Por favor, atualize a tela e tente novamente.");
+        }
 
         String docLimpo = request.getDocumento().replaceAll("\\D", "");
 
@@ -334,7 +339,7 @@ public class ClienteService {
     }
 
     @Transactional(readOnly = true)
-    public ClienteOpcoesResponse obterOpcoes() {
+    public ClienteDadosIniciaisResponse obterDadosIniciais() {
         List<OpcaoSelectDto> situacoes = Arrays.stream(SituacaoClienteEnum.values())
                 .map(s -> new OpcaoSelectDto(s.name(), s.getDescricao()))
                 .collect(Collectors.toList());
@@ -351,11 +356,16 @@ public class ClienteService {
                 .map(c -> new OpcaoSelectDto(c.name(), c.getDescricao()))
                 .collect(Collectors.toList());
 
-        return ClienteOpcoesResponse.builder()
+        List<OpcaoSelectDto> ufs = Arrays.stream(UfEnum.values())
+                .map(u -> new OpcaoSelectDto(u.name(), u.name() + " - " + u.getDescricao()))
+                .collect(Collectors.toList());
+
+        return ClienteDadosIniciaisResponse.builder()
                 .situacoes(situacoes)
                 .tiposPessoa(tiposPessoa)
                 .tiposEndereco(tiposEndereco)
                 .tiposContato(tiposContato)
+                .ufs(ufs)
                 .build();
     }
 }

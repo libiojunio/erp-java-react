@@ -36,6 +36,7 @@ public class ClienteResponse {
     private String criadoPor;
     private LocalDateTime alteradoEm;
     private String alteradoPor;
+    private Long versao;
 
     @Builder.Default
     private List<ClienteEnderecoDto> enderecos = new ArrayList<>();
@@ -84,6 +85,7 @@ public class ClienteResponse {
                 .criadoPor(cliente.getCriadoPor())
                 .alteradoEm(cliente.getAlteradoEm())
                 .alteradoPor(cliente.getAlteradoPor())
+                .versao(cliente.getVersao())
                 .enderecos(enderecosDto)
                 .contatos(contatosDto)
                 .build();

@@ -37,13 +37,12 @@ import BusinessIcon from '@mui/icons-material/Business';
 import HomeIcon from '@mui/icons-material/Home';
 import ContactPhoneIcon from '@mui/icons-material/ContactPhone';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { FileUploadDropzone } from '../components/common/FileUploadDropzone';
 import { CampoVisualizacao } from '../components/common/CampoVisualizacao';
-import { ClienteForm, EnderecoForm, ContatoForm } from '../types/cliente';
+import { ClienteForm, EnderecoForm, ContatoForm, ClienteDadosIniciais } from '../types/cliente';
 import {
-  ESTADOS_BR,
   formatarCpf,
   formatarCnpj,
   formatarCep,
@@ -108,7 +107,41 @@ export const ClienteDetalhesPage: React.FC = () => {
     severity: 'success',
   });
 
-  // Carregar dados do cliente quando houver ID
+  // Request inicial exclusivo da tela de detalhes que traz dados e opções do backend
+  const { data: dadosIniciais } = useQuery<ClienteDadosIniciais>({
+    queryKey: ['clientes-dados-iniciais'],
+    queryFn: async () => {
+      const res = await api.get('/clientes/dadosIniciais');
+      return res.data?.dados;
+    },
+  });
+
+  // Carregamento deduplicado dos dados do cliente (evita 2 requests em StrictMode)
+  const {
+    data: clienteCarregado,
+    isLoading: carregandoQuery,
+    refetch: refetchCliente,
+  } = useQuery({
+    queryKey: ['cliente', id],
+    queryFn: async () => {
+      if (!id || isNovo) {
+        return null;
+      }
+      const res = await api.get(`/clientes/${id}`);
+      return res.data?.dados;
+    },
+    enabled: Boolean(id && !isNovo),
+    staleTime: 0,
+  });
+
+  // Sempre que a rota mudar (ex.: de /visualizar/:id para /editar/:id), recarrega para obter dados e versão atualizados
+  useEffect(() => {
+    if (id && !isNovo) {
+      refetchCliente();
+    }
+  }, [location.pathname, id, isNovo, refetchCliente]);
+
+  // Sincroniza dados do cliente para o estado local do formulário
   useEffect(() => {
     if (isNovo) {
       setFormData(formVazio);
@@ -118,65 +151,57 @@ export const ClienteDetalhesPage: React.FC = () => {
       return;
     }
 
-    if (id) {
-      setCarregando(true);
+    if (clienteCarregado) {
+      setSituacaoCliente(clienteCarregado.situacao || 'ATIVO');
+      const tipo = clienteCarregado.tipoPessoa === 'PF' ? 'PF' : 'PJ';
+      const docFormatado =
+        tipo === 'PF'
+          ? formatarCpf(clienteCarregado.documento || '')
+          : formatarCnpj(clienteCarregado.documento || '');
+      const dataNasc = clienteCarregado.dataNascimento ? clienteCarregado.dataNascimento.substring(0, 10) : '';
+
+      const loadedForm: ClienteForm = {
+        tipoPessoa: tipo,
+        documento: docFormatado,
+        nomeRazaoSocial: clienteCarregado.nomeRazaoSocial || '',
+        nomeFantasia: clienteCarregado.nomeFantasia || '',
+        inscricaoEstadual: clienteCarregado.inscricaoEstadual || '',
+        dataNascimento: dataNasc,
+        email: clienteCarregado.email || '',
+        telefone: formatarTelefone(clienteCarregado.telefone || ''),
+        versao: clienteCarregado.versao,
+        arquivoId: clienteCarregado.arquivoId || null,
+        arquivo: clienteCarregado.arquivo || null,
+        enderecos: (clienteCarregado.enderecos || []).map((end: any) => ({
+          id: end.id,
+          tipo: end.tipo || 'PRINCIPAL',
+          cep: formatarCep(end.cep || ''),
+          logradouro: end.logradouro || '',
+          numero: end.numero || '',
+          complemento: end.complemento || '',
+          bairro: end.bairro || '',
+          cidade: end.cidade || '',
+          uf: end.uf || 'SP',
+        })),
+        contatos: (clienteCarregado.contatos || []).map((cto: any) => ({
+          id: cto.id,
+          nome: cto.nome || '',
+          cargo: cto.cargo || '',
+          email: cto.email || '',
+          telefone: formatarTelefone(cto.telefone || ''),
+        })),
+      };
+
+      setFormData(loadedForm);
+      setInitialFormData(JSON.parse(JSON.stringify(loadedForm)));
       setFormErro(null);
-      api
-        .get(`/clientes/${id}`)
-        .then((res) => {
-          const cliente = res.data?.dados;
-          if (cliente) {
-            setSituacaoCliente(cliente.situacao || 'ATIVO');
-            const tipo = cliente.tipoPessoa === 'PF' ? 'PF' : 'PJ';
-            const docFormatado =
-              tipo === 'PF'
-                ? formatarCpf(cliente.documento || '')
-                : formatarCnpj(cliente.documento || '');
-            const dataNasc = cliente.dataNascimento ? cliente.dataNascimento.substring(0, 10) : '';
-
-            const loadedForm: ClienteForm = {
-              tipoPessoa: tipo,
-              documento: docFormatado,
-              nomeRazaoSocial: cliente.nomeRazaoSocial || '',
-              nomeFantasia: cliente.nomeFantasia || '',
-              inscricaoEstadual: cliente.inscricaoEstadual || '',
-              dataNascimento: dataNasc,
-              email: cliente.email || '',
-              telefone: formatarTelefone(cliente.telefone || ''),
-              arquivoId: cliente.arquivoId || null,
-              arquivo: cliente.arquivo || null,
-              enderecos: (cliente.enderecos || []).map((end: any) => ({
-                id: end.id,
-                tipo: end.tipo || 'PRINCIPAL',
-                cep: formatarCep(end.cep || ''),
-                logradouro: end.logradouro || '',
-                numero: end.numero || '',
-                complemento: end.complemento || '',
-                bairro: end.bairro || '',
-                cidade: end.cidade || '',
-                uf: end.uf || 'SP',
-              })),
-              contatos: (cliente.contatos || []).map((cto: any) => ({
-                id: cto.id,
-                nome: cto.nome || '',
-                cargo: cto.cargo || '',
-                email: cto.email || '',
-                telefone: formatarTelefone(cto.telefone || ''),
-              })),
-            };
-
-            setFormData(loadedForm);
-            setInitialFormData(JSON.parse(JSON.stringify(loadedForm)));
-          }
-        })
-        .catch((err) => {
-          setFormErro(err.response?.data?.mensagem || 'Erro ao carregar dados do cliente.');
-        })
-        .finally(() => {
-          setCarregando(false);
-        });
     }
-  }, [id, isNovo]);
+  }, [clienteCarregado, isNovo]);
+
+  // Sincroniza estado de carregamento
+  useEffect(() => {
+    setCarregando(carregandoQuery);
+  }, [carregandoQuery]);
 
   // Manipulação de Endereços
   const handleAdicionarEndereco = () => {
@@ -351,6 +376,7 @@ export const ClienteDetalhesPage: React.FC = () => {
         dataNascimento: formData.dataNascimento || null,
         email: formData.email.trim() || null,
         telefone: limparDigitos(formData.telefone) || null,
+        versao: formData.versao,
         arquivoId: formData.arquivoId,
         enderecos: formData.enderecos.map((end) => ({
           ...end,
@@ -806,9 +832,11 @@ export const ClienteDetalhesPage: React.FC = () => {
                                 disabled={salvarMutation.isPending}
                                 onChange={(e) => handleAtualizarEndereco(idx, 'tipo', e.target.value)}
                               >
-                                <MenuItem value="PRINCIPAL">Principal</MenuItem>
-                                <MenuItem value="COBRANCA">Cobrança</MenuItem>
-                                <MenuItem value="ENTREGA">Entrega</MenuItem>
+                                {(dadosIniciais?.tiposEndereco || []).map((tipoItem) => (
+                                  <MenuItem key={tipoItem.valor} value={tipoItem.valor}>
+                                    {tipoItem.descricao}
+                                  </MenuItem>
+                                ))}
                               </TextField>
                             )}
                           </Grid>
@@ -841,8 +869,10 @@ export const ClienteDetalhesPage: React.FC = () => {
                                 disabled={salvarMutation.isPending}
                                 onChange={(e) => handleAtualizarEndereco(idx, 'uf', e.target.value)}
                               >
-                                {ESTADOS_BR.map((uf) => (
-                                  <MenuItem key={uf} value={uf}>{uf}</MenuItem>
+                                {(dadosIniciais?.ufs || []).map((ufItem) => (
+                                  <MenuItem key={ufItem.valor} value={ufItem.valor}>
+                                    {ufItem.descricao}
+                                  </MenuItem>
                                 ))}
                               </TextField>
                             )}
