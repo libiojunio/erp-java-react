@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Paper,
   Box,
@@ -12,42 +12,57 @@ import {
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import { DataGrid, GridColDef, GridValidRowModel } from '@mui/x-data-grid';
+import { useQuery } from '@tanstack/react-query';
 import { dataGridPtBR } from '../../utils/dataGridPtBR';
 import { CustomPaginationActions } from '../common/CustomPaginationActions';
 import { PaginationModel } from '../../types/comum';
+import { useTablePagination } from '../../hooks/useTablePagination';
+import { api } from '../../services/api';
 
-interface AppDataTableProps<T extends GridValidRowModel = any> {
-  rows: T[];
+export interface AppDataTableProps<T extends GridValidRowModel = any> {
+  // Carregamento independente via URL ou fornecimento manual de rows
+  fetchUrl?: string;
+  rows?: T[];
   columns: GridColDef<T>[];
   loading?: boolean;
   rowCount?: number;
+
+  // Paginação
   paginationMode?: 'server' | 'client';
-  paginationModel: PaginationModel;
-  onPaginationModelChange: (model: PaginationModel) => void;
-  minHeight?: number | string;
+  paginationModel?: PaginationModel;
+  onPaginationModelChange?: (model: PaginationModel, isDataLoadingOrEmpty?: boolean) => void;
+  storageKey?: string;
   pageSizeOptions?: number[];
+  minHeight?: number | string;
   sx?: SxProps<Theme>;
 
-  // Configuração da barra de busca padronizada
+  // Barra de Pesquisa e Filtros
   showSearchBar?: boolean;
   searchPlaceholder?: string;
   searchValue?: string;
   onSearchChange?: (val: string) => void;
   extraFilters?: React.ReactNode;
+  extraParams?: Record<string, any>;
   onPesquisar?: (termo?: string) => void;
 
   // Controle de inicialização da pesquisa no backend
   iniciarPesquisando?: boolean;
+
+  // Gatilho de recarga externa
+  reloadTrigger?: any;
+  onDataLoaded?: (data: any) => void;
 }
 
 export const AppDataTable = <T extends GridValidRowModel>({
-  rows,
+  fetchUrl,
+  rows: externalRows,
   columns,
-  loading = false,
-  rowCount,
+  loading: externalLoading = false,
+  rowCount: externalRowCount,
   paginationMode = 'server',
-  paginationModel,
-  onPaginationModelChange,
+  paginationModel: externalPaginationModel,
+  onPaginationModelChange: externalOnPaginationModelChange,
+  storageKey = 'app_data_table_pagination',
   minHeight = 900,
   pageSizeOptions = [10, 20, 50, 100],
   sx,
@@ -56,11 +71,40 @@ export const AppDataTable = <T extends GridValidRowModel>({
   searchValue,
   onSearchChange,
   extraFilters,
+  extraParams,
   onPesquisar,
   iniciarPesquisando = true,
+  reloadTrigger,
+  onDataLoaded,
 }: AppDataTableProps<T>) => {
+  // Controle de exibição da tabela e disparo da busca
   const [pesquisaAtiva, setPesquisaAtiva] = useState<boolean>(iniciarPesquisando);
   const [termoLocal, setTermoLocal] = useState<string>('');
+
+  // Sincroniza caso a prop iniciarPesquisando mude externamente
+  useEffect(() => {
+    if (iniciarPesquisando !== undefined) {
+      setPesquisaAtiva(iniciarPesquisando);
+    }
+  }, [iniciarPesquisando]);
+
+  // Hook interno de paginação caso não seja fornecido externamente
+  const internalPagination = useTablePagination(storageKey, 10);
+
+  const activePaginationModel = externalPaginationModel !== undefined
+    ? externalPaginationModel
+    : internalPagination.paginationModel;
+
+  const handleActivePaginationChange = useCallback(
+    (newModel: PaginationModel, isDataLoadingOrEmpty = false) => {
+      if (externalOnPaginationModelChange) {
+        externalOnPaginationModelChange(newModel, isDataLoadingOrEmpty);
+      } else {
+        internalPagination.handlePaginationModelChange(newModel, isDataLoadingOrEmpty);
+      }
+    },
+    [externalOnPaginationModelChange, internalPagination],
+  );
 
   const termoAtual = searchValue !== undefined ? searchValue : termoLocal;
 
@@ -72,9 +116,53 @@ export const AppDataTable = <T extends GridValidRowModel>({
     }
   };
 
+  // Carregamento independente de dados se fetchUrl for configurado
+  const {
+    data: queryResponse,
+    isLoading: queryLoading,
+    isFetching: queryFetching,
+    refetch,
+  } = useQuery({
+    queryKey: [
+      fetchUrl,
+      activePaginationModel.page,
+      activePaginationModel.pageSize,
+      extraParams,
+      reloadTrigger,
+    ],
+    queryFn: async () => {
+      if (!fetchUrl) {
+        return null;
+      }
+      const params: Record<string, any> = {
+        page: activePaginationModel.page,
+        size: activePaginationModel.pageSize,
+        sortProperty: 'id',
+        sortDirection: 'DESC',
+        ...(extraParams || {}),
+      };
+
+      if (termoAtual && termoAtual.trim()) {
+        params.termo = termoAtual.trim();
+      }
+
+      const response = await api.get(fetchUrl, { params });
+      const dados = response.data?.dados;
+      if (onDataLoaded) {
+        onDataLoaded(dados);
+      }
+      return dados;
+    },
+    // SE iniciarPesquisando = false, enabled é false até o usuário clicar no botão Pesquisar
+    enabled: Boolean(fetchUrl && pesquisaAtiva),
+  });
+
   const handleExecutarPesquisa = () => {
     if (!pesquisaAtiva) {
       setPesquisaAtiva(true);
+    }
+    if (fetchUrl) {
+      refetch();
     }
     if (onPesquisar) {
       onPesquisar(termoAtual);
@@ -87,16 +175,34 @@ export const AppDataTable = <T extends GridValidRowModel>({
     }
   };
 
-  // Filtragem local na tabela caso onSearchChange não seja controlado externamente
+  // Extração das linhas (do backend ou passadas externamente)
+  const rowsResolvidas = useMemo<T[]>(() => {
+    if (fetchUrl) {
+      const dados = queryResponse;
+      if (Array.isArray(dados)) {
+        return dados;
+      }
+      if (dados && Array.isArray(dados.content)) {
+        return dados.content;
+      }
+      if (dados && Array.isArray(dados.conteudo)) {
+        return dados.conteudo;
+      }
+      return [];
+    }
+    return externalRows || [];
+  }, [fetchUrl, queryResponse, externalRows]);
+
+  // Filtragem local na tabela caso onSearchChange não seja controlado externamente e sem fetchUrl
   const rowsExibidas = useMemo(() => {
-    if (onSearchChange) {
-      return rows;
+    if (fetchUrl || onSearchChange) {
+      return rowsResolvidas;
     }
     const termo = termoLocal.trim().toLowerCase();
     if (!termo) {
-      return rows;
+      return rowsResolvidas;
     }
-    return rows.filter((row: any) => {
+    return rowsResolvidas.filter((row: any) => {
       return Object.values(row).some((val) => {
         if (val === null || val === undefined) {
           return false;
@@ -107,9 +213,26 @@ export const AppDataTable = <T extends GridValidRowModel>({
         return String(val).toLowerCase().includes(termo);
       });
     });
-  }, [rows, termoLocal, onSearchChange]);
+  }, [rowsResolvidas, termoLocal, onSearchChange, fetchUrl]);
 
-  const totalLinhas = rowCount !== undefined ? rowCount : rowsExibidas.length;
+  // Contagem total de linhas para paginação do servidor
+  const totalLinhas = useMemo<number>(() => {
+    if (fetchUrl) {
+      const dados = queryResponse;
+      if (dados && typeof dados.totalElements === 'number') {
+        return dados.totalElements;
+      }
+      return rowsResolvidas.length;
+    }
+    if (externalRowCount !== undefined) {
+      return externalRowCount;
+    }
+    return rowsExibidas.length;
+  }, [fetchUrl, queryResponse, rowsResolvidas.length, externalRowCount, rowsExibidas.length]);
+
+  const isLoadingTotal = fetchUrl
+    ? Boolean(queryLoading || queryFetching)
+    : Boolean(externalLoading);
 
   return (
     <Box>
@@ -166,12 +289,14 @@ export const AppDataTable = <T extends GridValidRowModel>({
             autoHeight
             rows={rowsExibidas}
             columns={columns}
-            loading={loading}
+            loading={isLoadingTotal}
             localeText={dataGridPtBR}
             paginationMode={paginationMode}
             rowCount={totalLinhas}
-            paginationModel={paginationModel}
-            onPaginationModelChange={onPaginationModelChange}
+            paginationModel={activePaginationModel}
+            onPaginationModelChange={(newModel) => {
+              handleActivePaginationChange(newModel, isLoadingTotal || rowsExibidas.length === 0);
+            }}
             sx={{
               minHeight,
               border: 'none',

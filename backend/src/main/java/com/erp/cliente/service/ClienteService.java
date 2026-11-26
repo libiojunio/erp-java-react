@@ -5,8 +5,13 @@ import com.erp.arquivo.service.ArquivoService;
 import com.erp.cliente.domain.Cliente;
 import com.erp.cliente.domain.ClienteContato;
 import com.erp.cliente.domain.ClienteEndereco;
+import com.erp.cliente.domain.enums.SituacaoClienteEnum;
+import com.erp.cliente.domain.enums.TipoContatoEnum;
+import com.erp.cliente.domain.enums.TipoEnderecoEnum;
+import com.erp.cliente.domain.enums.TipoPessoaEnum;
 import com.erp.cliente.dto.*;
 import com.erp.cliente.repository.ClienteRepository;
+import com.erp.comum.dto.OpcaoSelectDto;
 import com.erp.comum.exception.BusinessException;
 import com.erp.comum.exception.ResourceNotFoundException;
 import com.erp.comum.multitenancy.TenantContext;
@@ -20,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -325,5 +331,31 @@ public class ClienteService {
             throw new BusinessException("Nenhuma empresa ativa identificada na sessão");
         }
         return empresaId;
+    }
+
+    @Transactional(readOnly = true)
+    public ClienteOpcoesResponse obterOpcoes() {
+        List<OpcaoSelectDto> situacoes = Arrays.stream(SituacaoClienteEnum.values())
+                .map(s -> new OpcaoSelectDto(s.name(), s.getDescricao()))
+                .collect(Collectors.toList());
+
+        List<OpcaoSelectDto> tiposPessoa = Arrays.stream(TipoPessoaEnum.values())
+                .map(t -> new OpcaoSelectDto(t.name(), t.getDescricao()))
+                .collect(Collectors.toList());
+
+        List<OpcaoSelectDto> tiposEndereco = Arrays.stream(TipoEnderecoEnum.values())
+                .map(e -> new OpcaoSelectDto(e.name(), e.getDescricao()))
+                .collect(Collectors.toList());
+
+        List<OpcaoSelectDto> tiposContato = Arrays.stream(TipoContatoEnum.values())
+                .map(c -> new OpcaoSelectDto(c.name(), c.getDescricao()))
+                .collect(Collectors.toList());
+
+        return ClienteOpcoesResponse.builder()
+                .situacoes(situacoes)
+                .tiposPessoa(tiposPessoa)
+                .tiposEndereco(tiposEndereco)
+                .tiposContato(tiposContato)
+                .build();
     }
 }

@@ -1,6 +1,7 @@
 package com.erp.seguranca.controller;
 
 import com.erp.comum.dto.ApiResponse;
+import com.erp.seguranca.dto.EmpresaResumoDto;
 import com.erp.seguranca.dto.LoginRequest;
 import com.erp.seguranca.dto.LoginResponse;
 import com.erp.seguranca.dto.TrocaEmpresaRequest;
@@ -11,6 +12,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -39,5 +42,12 @@ public class AuthController {
     public ResponseEntity<ApiResponse<LoginResponse>> obterUsuarioLogado() {
         LoginResponse response = authService.obterUsuarioAutenticado();
         return ResponseEntity.ok(ApiResponse.sucesso(response));
+    }
+
+    @GetMapping("/minhas-empresas")
+    @Operation(summary = "Lista as empresas associadas ao usuário autenticado para troca de empresa sob demanda")
+    public ResponseEntity<ApiResponse<List<EmpresaResumoDto>>> listarMinhasEmpresas() {
+        List<EmpresaResumoDto> empresas = authService.listarEmpresasDoUsuarioLogado();
+        return ResponseEntity.ok(ApiResponse.sucesso(empresas));
     }
 }

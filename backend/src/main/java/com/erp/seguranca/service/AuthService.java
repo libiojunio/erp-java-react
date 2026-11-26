@@ -152,6 +152,16 @@ public class AuthService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
+    public List<EmpresaResumoDto> listarEmpresasDoUsuarioLogado() {
+        Usuario usuario = getUsuarioLogado();
+        List<UsuarioEmpresa> vinculos = usuarioEmpresaRepository.findByUsuarioId(usuario.getId());
+        return vinculos.stream()
+                .filter(v -> v.getEmpresa() != null && "ATIVO".equalsIgnoreCase(v.getEmpresa().getSituacao()))
+                .map(v -> EmpresaResumoDto.fromEntity(v.getEmpresa()))
+                .collect(Collectors.toList());
+    }
+
     private Usuario getUsuarioLogado() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {

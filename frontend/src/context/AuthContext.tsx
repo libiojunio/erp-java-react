@@ -13,8 +13,30 @@ export type { Empresa, Usuario, AuthContextType };
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [usuario, setUsuario] = useState<Usuario | null>(null);
-  const [empresaAtiva, setEmpresaAtiva] = useState<Empresa | null>(null);
+  const [usuario, setUsuario] = useState<Usuario | null>(() => {
+    const salvo = localStorage.getItem('erp_user');
+    if (salvo) {
+      try {
+        return JSON.parse(salvo);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  const [empresaAtiva, setEmpresaAtiva] = useState<Empresa | null>(() => {
+    const salva = localStorage.getItem('erp_empresa_ativa');
+    if (salva) {
+      try {
+        return JSON.parse(salva);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
+
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -36,6 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setEmpresas(data.empresas || []);
         localStorage.setItem('erp_user', JSON.stringify(data.usuario));
         if (data.empresaAtiva) {
+          localStorage.setItem('erp_empresa_ativa', JSON.stringify(data.empresaAtiva));
           localStorage.setItem('erp_empresa_ativa_id', data.empresaAtiva.id.toString());
         }
       })
@@ -43,6 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Token inválido ou expirado
         localStorage.removeItem('erp_token');
         localStorage.removeItem('erp_user');
+        localStorage.removeItem('erp_empresa_ativa');
         localStorage.removeItem('erp_empresa_ativa_id');
         setUsuario(null);
         setEmpresaAtiva(null);
@@ -62,6 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('erp_token', data.token);
       localStorage.setItem('erp_user', JSON.stringify(data.usuario));
       if (data.empresaAtiva) {
+        localStorage.setItem('erp_empresa_ativa', JSON.stringify(data.empresaAtiva));
         localStorage.setItem('erp_empresa_ativa_id', data.empresaAtiva.id.toString());
       }
 
@@ -76,6 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     localStorage.removeItem('erp_token');
     localStorage.removeItem('erp_user');
+    localStorage.removeItem('erp_empresa_ativa');
     localStorage.removeItem('erp_empresa_ativa_id');
     setUsuario(null);
     setEmpresaAtiva(null);
@@ -91,6 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Atualiza token JWT contendo o novo empresaId
       localStorage.setItem('erp_token', data.token);
       if (data.empresaAtiva) {
+        localStorage.setItem('erp_empresa_ativa', JSON.stringify(data.empresaAtiva));
         localStorage.setItem('erp_empresa_ativa_id', data.empresaAtiva.id.toString());
       }
 

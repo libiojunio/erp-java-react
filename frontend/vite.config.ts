@@ -6,6 +6,13 @@ export default defineConfig({
   plugins: [
     react(),
     {
+      name: 'full-reload-always',
+      handleHotUpdate({ server }) {
+        server.ws.send({ type: 'full-reload' });
+        return [];
+      },
+    },
+    {
       name: 'fix-rolldown-jsx-warning',
       enforce: 'post',
       configResolved(config) {

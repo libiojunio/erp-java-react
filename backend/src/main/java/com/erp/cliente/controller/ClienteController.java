@@ -35,6 +35,13 @@ public class ClienteController {
         return ResponseEntity.ok(ApiResponse.sucesso(pagina));
     }
 
+    @GetMapping("/opcoes")
+    @Operation(summary = "Obtém as opções de enum e domínios para campos select da tela de clientes")
+    public ResponseEntity<ApiResponse<ClienteOpcoesResponse>> obterOpcoes() {
+        ClienteOpcoesResponse opcoes = clienteService.obterOpcoes();
+        return ResponseEntity.ok(ApiResponse.sucesso(opcoes));
+    }
+
     @GetMapping("/todos")
     @Operation(summary = "Lista todos os clientes da empresa ativa sem paginação")
     public ResponseEntity<ApiResponse<List<ClienteResponse>>> listarTodos() {

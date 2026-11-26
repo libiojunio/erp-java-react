@@ -2,11 +2,14 @@ package com.erp.empresa.service;
 
 import com.erp.arquivo.dto.ArquivoDto;
 import com.erp.arquivo.service.ArquivoService;
+import com.erp.comum.dto.OpcaoSelectDto;
 import com.erp.comum.exception.BusinessException;
 import com.erp.comum.exception.ResourceNotFoundException;
 import com.erp.comum.validation.CnpjValidator;
 import com.erp.empresa.domain.Empresa;
+import com.erp.empresa.domain.enums.SituacaoEmpresaEnum;
 import com.erp.empresa.dto.EmpresaFiltroForm;
+import com.erp.empresa.dto.EmpresaOpcoesResponse;
 import com.erp.empresa.dto.EmpresaRequest;
 import com.erp.empresa.dto.EmpresaResponse;
 import com.erp.empresa.repository.EmpresaRepository;
@@ -23,6 +26,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -265,5 +269,16 @@ public class EmpresaService {
         } catch (Exception e) {
             log.warn("Não foi possível vincular a empresa criada ao usuário da sessão: {}", e.getMessage());
         }
+    }
+
+    @Transactional(readOnly = true)
+    public EmpresaOpcoesResponse obterOpcoes() {
+        List<OpcaoSelectDto> situacoes = Arrays.stream(SituacaoEmpresaEnum.values())
+                .map(s -> new OpcaoSelectDto(s.name(), s.getDescricao()))
+                .collect(Collectors.toList());
+
+        return EmpresaOpcoesResponse.builder()
+                .situacoes(situacoes)
+                .build();
     }
 }

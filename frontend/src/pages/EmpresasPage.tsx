@@ -1,10 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
-  Button,
   Chip,
-  IconButton,
-  Tooltip,
+  TextField,
+  MenuItem,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -13,10 +12,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { EmpresaItem } from '../types';
-import { useTablePagination } from '../hooks/useTablePagination';
 import { AppDataTable } from '../components/table/AppDataTable';
 import { IdChip } from '../components/table/IdChip';
 import { PageHeader } from '../components/layout/PageHeader';
+import { BotaoTooltip } from '../components/common/BotaoTooltip';
+import { BotaoAcao } from '../components/common/BotaoAcao';
 import { formatarCnpj } from '../utils/documentos';
 
 interface EmpresasPageProps {
@@ -28,83 +28,30 @@ export const EmpresasPage: React.FC<EmpresasPageProps> = ({
 }) => {
   const navigate = useNavigate();
 
-  // Estado para termo de busca local
+  // Gatilho para recarregar a tabela quando solicitado pelo botão no cabeçalho
+  const [recarregarChave, setRecarregarChave] = useState<number>(0);
+
+  // Estado para termo de busca
   const [filtroTermo, setFiltroTermo] = useState<string>('');
+  const [filtroSituacao, setFiltroSituacao] = useState<string>('TODOS');
 
-  // Estado para controlar se a consulta ao backend está habilitada
-  const [pesquisaHabilitada, setPesquisaHabilitada] = useState<boolean>(iniciarPesquisando);
-
-  // Hook de paginação persistida com padrão de 10 registros
-  const {
-    paginationModel,
-    handlePaginationModelChange,
-  } = useTablePagination('empresas_pagination', 10);
-
-  // Consulta paginada com o backend
-  const {
-    data: responseDados,
-    isLoading,
-    isFetching,
-    refetch,
-  } = useQuery({
-    queryKey: ['empresas', paginationModel.page, paginationModel.pageSize],
+  // Request inicial que traz as opções de campos select (do backend com ENUM)
+  const { data: opcoesData } = useQuery({
+    queryKey: ['empresas-opcoes'],
     queryFn: async () => {
       try {
-        const response = await api.get(
-          `/empresas?page=${paginationModel.page}&size=${paginationModel.pageSize}&sortProperty=id&sortDirection=DESC`
-        );
+        const response = await api.get('/empresas/opcoes');
         return response.data?.dados;
       } catch (err) {
         return null;
       }
     },
-    enabled: pesquisaHabilitada,
   });
 
-  // Extração das linhas da página atual
-  const empresasDaPagina = useMemo<EmpresaItem[]>(() => {
-    const dados = responseDados;
-    if (Array.isArray(dados)) {
-      return dados;
-    }
-    if (dados && Array.isArray(dados.content)) {
-      return dados.content;
-    }
-    if (dados && Array.isArray(dados.conteudo)) {
-      return dados.conteudo;
-    }
-    return [];
-  }, [responseDados]);
-
-  // Total de registros no backend para a paginação do servidor
-  const totalEmpresas = useMemo<number>(() => {
-    const dados = responseDados;
-    if (dados && typeof dados.totalElements === 'number') {
-      return dados.totalElements;
-    }
-    return empresasDaPagina.length;
-  }, [responseDados, empresasDaPagina.length]);
-
-  // Filtro local na tabela (pesquisa na tabela de forma local)
-  const empresasExibidas = useMemo(() => {
-    if (!filtroTermo.trim()) {
-      return empresasDaPagina;
-    }
-    const termo = filtroTermo.toLowerCase().trim();
-    const termoNumerico = termo.replace(/\D/g, '');
-
-    return empresasDaPagina.filter((emp) => {
-      const razao = (emp.razaoSocial || '').toLowerCase();
-      const fantasia = (emp.nomeFantasia || '').toLowerCase();
-      const cnpj = (emp.cnpj || '').replace(/\D/g, '');
-      const cidade = (emp.cidade || '').toLowerCase();
-
-      const matchTexto = razao.includes(termo) || fantasia.includes(termo) || cidade.includes(termo);
-      const matchCnpj = termoNumerico.length > 0 && cnpj.includes(termoNumerico);
-
-      return matchTexto || matchCnpj;
-    });
-  }, [empresasDaPagina, filtroTermo]);
+  const situacoesDisponiveis = opcoesData?.situacoes || [
+    { valor: 'ATIVO', descricao: 'Ativo' },
+    { valor: 'INATIVO', descricao: 'Inativo' },
+  ];
 
   // Colunas do DataGrid (com ID Chip clicável)
   const columns: GridColDef<EmpresaItem>[] = [
@@ -169,56 +116,63 @@ export const EmpresasPage: React.FC<EmpresasPageProps> = ({
 
   return (
     <Box>
-      {/* Cabeçalho Reutilizável */}
+      {/* Cabeçalho Reutilizável com BotaoTooltip e BotaoAcao */}
       <PageHeader
         title="Gerenciamento de Empresas"
         subtitle="Administração das filiais e unidades organizacionais (Acesso Restrito ao Perfil ADMIN)"
         actions={
           <>
-            <Tooltip title="Recarregar Lista">
-              <IconButton
-                onClick={() => {
-                  refetch();
-                }}
-                disabled={isLoading || isFetching}
-                color="primary"
-              >
-                <RefreshIcon />
-              </IconButton>
-            </Tooltip>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              size="medium"
+            <BotaoTooltip
+              titulo="Recarregar Lista"
+              icone={<RefreshIcon />}
+              onClick={() => {
+                setRecarregarChave((prev) => prev + 1);
+              }}
+              color="primary"
+            />
+            <BotaoAcao
+              texto="Nova Empresa"
+              icone={<AddIcon />}
               onClick={() => {
                 navigate('/empresas/novo');
               }}
-            >
-              Nova Empresa
-            </Button>
+            />
           </>
         }
       />
 
-      {/* Tabela Reutilizável com Barra de Pesquisa Padronizada, Paginação com Backend e iniciarPesquisando */}
+      {/* Tabela Independente: busca dados diretamente do backend via fetchUrl respeitando iniciarPesquisando */}
       <AppDataTable
-        rows={empresasExibidas}
+        fetchUrl="/empresas"
+        storageKey="empresas_pagination"
         columns={columns}
-        loading={isLoading || isFetching}
-        rowCount={totalEmpresas}
-        paginationMode="server"
-        paginationModel={paginationModel}
-        onPaginationModelChange={(model) => {
-          handlePaginationModelChange(model, isLoading || isFetching || empresasDaPagina.length === 0);
-        }}
         searchPlaceholder="Pesquisar por Razão Social, Nome Fantasia ou CNPJ..."
         searchValue={filtroTermo}
         onSearchChange={setFiltroTermo}
-        onPesquisar={() => {
-          setPesquisaHabilitada(true);
-          refetch();
+        extraParams={{
+          situacao: filtroSituacao !== 'TODOS' ? filtroSituacao : undefined,
         }}
+        extraFilters={
+          <TextField
+            select
+            fullWidth
+            size="small"
+            label="Situação"
+            value={filtroSituacao}
+            onChange={(e) => {
+              setFiltroSituacao(e.target.value);
+            }}
+          >
+            <MenuItem value="TODOS">Todos</MenuItem>
+            {situacoesDisponiveis.map((sit: any) => (
+              <MenuItem key={sit.valor} value={sit.valor}>
+                {sit.descricao}
+              </MenuItem>
+            ))}
+          </TextField>
+        }
         iniciarPesquisando={iniciarPesquisando}
+        reloadTrigger={recarregarChave}
       />
     </Box>
   );
