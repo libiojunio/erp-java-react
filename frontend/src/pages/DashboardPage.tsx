@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   Grid,
-  Paper,
   Typography,
   Box,
   Card,
@@ -12,6 +11,7 @@ import {
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
 import BusinessIcon from '@mui/icons-material/Business';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 
@@ -21,9 +21,63 @@ export const DashboardPage: React.FC = () => {
 
   useEffect(() => {
     api.get('/status')
-      .then(() => setBackendStatus('UP'))
-      .catch(() => setBackendStatus('DOWN'));
+      .then(() => {
+        setBackendStatus('UP');
+      })
+      .catch(() => {
+        setBackendStatus('DOWN');
+      });
   }, []);
+
+  // Total de clientes da empresa ativa
+  const { data: totalClientes = 0 } = useQuery({
+    queryKey: ['clientes', 'total', empresaAtiva?.id],
+    queryFn: async () => {
+      if (!empresaAtiva) {
+        return 0;
+      }
+      try {
+        const response = await api.get('/clientes?size=1');
+        const dados = response.data?.dados;
+        if (dados && typeof dados.totalElements === 'number') {
+          return dados.totalElements;
+        }
+        if (Array.isArray(dados)) {
+          return dados.length;
+        }
+        if (dados && Array.isArray(dados.content)) {
+          return dados.totalElements ?? dados.content.length;
+        }
+        return 0;
+      } catch (err) {
+        return 0;
+      }
+    },
+    enabled: !!empresaAtiva,
+  });
+
+  // Total de empresas habilitadas no sistema
+  const { data: totalEmpresas = (empresas?.length || 1) } = useQuery({
+    queryKey: ['empresas', 'total'],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/empresas?size=1');
+        const dados = response.data?.dados;
+        if (dados && typeof dados.totalElements === 'number') {
+          return dados.totalElements;
+        }
+        if (Array.isArray(dados)) {
+          return dados.length;
+        }
+        if (dados && Array.isArray(dados.content)) {
+          return dados.totalElements ?? dados.content.length;
+        }
+        return empresas?.length || 1;
+      } catch (err) {
+        return empresas?.length || 1;
+      }
+    },
+  });
 
   return (
     <Box>
@@ -45,7 +99,7 @@ export const DashboardPage: React.FC = () => {
 
       {backendStatus === 'DOWN' && (
         <Alert severity="warning" sx={{ mb: 3 }}>
-          O backend Spring Boot (porta 8080) ainda não está em execução. O frontend está utilizando dados locais de inicialização da Fase 0.
+          O backend Spring Boot (porta 8080) ainda não está em execução. O frontend está utilizando dados locais de inicialização.
         </Alert>
       )}
 
@@ -67,10 +121,10 @@ export const DashboardPage: React.FC = () => {
                   Clientes Cadastrados
                 </Typography>
                 <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                  0
+                  {totalClientes}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Fase 3 / 4 — Em implantação
+                  {empresaAtiva ? `Na empresa ${empresaAtiva.nomeFantasia || empresaAtiva.razaoSocial}` : 'Isolamento multiempresa'}
                 </Typography>
               </Box>
             </CardContent>
@@ -88,7 +142,7 @@ export const DashboardPage: React.FC = () => {
                   Empresas Habilitadas
                 </Typography>
                 <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                  {empresas?.length || 1}
+                  {totalEmpresas}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
                   Multiempresa ativo
@@ -118,36 +172,9 @@ export const DashboardPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }} elevation={1}>
-            <Typography variant="h6" gutterBottom>
-              Status das Fases do Projeto
-            </Typography>
-            <Typography variant="body2" color="text.secondary" paragraph>
-              Acompanhamento da construção do ERP Multiempresa:
-            </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1.5, bgcolor: '#e8f5e9', borderRadius: 1 }}>
-                <Typography variant="body2"><strong>Fase 0 — Fundação</strong>: Estrutura, Spring Boot, Oracle Compose, Flyway, React MUI</Typography>
-                <Chip label="Em Andamento" color="success" size="small" />
-              </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1.5, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-                <Typography variant="body2"><strong>Fase 1 — Segurança</strong>: Autenticação JWT, troca de empresa ativa, perfis ADMIN/OPERADOR</Typography>
-                <Chip label="Próxima" color="default" size="small" />
-              </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1.5, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-                <Typography variant="body2"><strong>Fase 2 — Cadastro de Empresas</strong>: CRUD e inativação de empresas</Typography>
-                <Chip label="Pendente" color="default" size="small" />
-              </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1.5, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-                <Typography variant="body2"><strong>Fase 3 & 4 — Cadastro de Clientes (Back + Front)</strong>: PF/PJ com CPF/CNPJ, endereços e contatos</Typography>
-                <Chip label="Pendente" color="default" size="small" />
-              </Box>
-            </Box>
-          </Paper>
-        </Grid>
       </Grid>
     </Box>
   );
 };
+
+export default DashboardPage;
