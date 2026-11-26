@@ -28,6 +28,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { FileUploadDropzone, ArquivoInfo } from '../components/common/FileUploadDropzone';
 import { CampoVisualizacao } from '../components/common/CampoVisualizacao';
+import { EmpresaForm } from '../types/empresa';
 
 function SlideTransition(props: SlideProps) {
   return <Slide {...props} direction="left" />;
@@ -61,7 +62,7 @@ function formatarCep(cep: string): string {
   return cep;
 }
 
-const formVazio = {
+const formVazio: EmpresaForm = {
   razaoSocial: '',
   nomeFantasia: '',
   cnpj: '',

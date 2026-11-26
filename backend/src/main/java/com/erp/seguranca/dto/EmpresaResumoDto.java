@@ -18,7 +18,9 @@ public class EmpresaResumoDto {
     private String cnpj;
 
     public static EmpresaResumoDto fromEntity(Empresa empresa) {
-        if (empresa == null) return null;
+        if (empresa == null) {
+            return null;
+        }
         return EmpresaResumoDto.builder()
                 .id(empresa.getId())
                 .razaoSocial(empresa.getRazaoSocial())

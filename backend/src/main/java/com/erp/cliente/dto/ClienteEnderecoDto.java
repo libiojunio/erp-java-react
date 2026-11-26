@@ -41,7 +41,9 @@ public class ClienteEnderecoDto {
     private String uf;
 
     public static ClienteEnderecoDto fromEntity(ClienteEndereco endereco) {
-        if (endereco == null) return null;
+        if (endereco == null) {
+            return null;
+        }
         return ClienteEnderecoDto.builder()
                 .id(endereco.getId())
                 .tipo(endereco.getTipo())

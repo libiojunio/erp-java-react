@@ -2,6 +2,7 @@ package com.erp.empresa.controller;
 
 import com.erp.comum.dto.ApiResponse;
 import com.erp.empresa.dto.AlterarSituacaoRequest;
+import com.erp.empresa.dto.EmpresaFiltroForm;
 import com.erp.empresa.dto.EmpresaRequest;
 import com.erp.empresa.dto.EmpresaResponse;
 import com.erp.empresa.service.EmpresaService;
@@ -9,6 +10,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -29,17 +31,9 @@ public class EmpresaController {
     private final EmpresaService empresaService;
 
     @GetMapping
-    @Operation(summary = "Lista todas as empresas cadastradas com suporte a busca e paginação")
-    public ResponseEntity<ApiResponse<List<EmpresaResponse>>> listar(
-            @RequestParam(required = false) String filtro,
-            @RequestParam(required = false) String situacao,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "50") int size,
-            @RequestParam(defaultValue = "id") String sortProperty,
-            @RequestParam(defaultValue = "DESC") String sortDirection
-    ) {
-        Sort sort = Sort.by(Sort.Direction.fromString(sortDirection), sortProperty);
-        Page<EmpresaResponse> pageResult = empresaService.listar(filtro, situacao, PageRequest.of(page, size, sort));
+    @Operation(summary = "Lista todas as empresas cadastradas com suporte a formulário de busca e paginação")
+    public ResponseEntity<ApiResponse<List<EmpresaResponse>>> listar(@ParameterObject EmpresaFiltroForm filtroForm) {
+        Page<EmpresaResponse> pageResult = empresaService.listar(filtroForm);
         return ResponseEntity.ok(ApiResponse.sucesso(pageResult.getContent()));
     }
 

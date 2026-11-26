@@ -22,7 +22,9 @@ public class UsuarioResumoDto {
     private List<String> perfis;
 
     public static UsuarioResumoDto fromEntity(Usuario usuario) {
-        if (usuario == null) return null;
+        if (usuario == null) {
+            return null;
+        }
         List<String> perfisNomes = usuario.getPerfis().stream()
                 .map(Perfil::getNome)
                 .collect(Collectors.toList());

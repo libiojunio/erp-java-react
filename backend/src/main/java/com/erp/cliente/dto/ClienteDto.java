@@ -27,7 +27,9 @@ public class ClienteDto {
     private String situacao;
 
     public static ClienteDto fromEntity(Cliente cliente) {
-        if (cliente == null) return null;
+        if (cliente == null) {
+            return null;
+        }
         return ClienteDto.builder()
                 .id(cliente.getId())
                 .empresaId(cliente.getEmpresaId())

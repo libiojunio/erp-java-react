@@ -32,6 +32,21 @@ public class ClienteService {
     private final ArquivoService arquivoService;
 
     @Transactional(readOnly = true)
+    public Page<ClienteResponse> listarPaginado(ClienteFiltroForm filtroForm, Pageable pageable) {
+        Pageable resolvedPageable = pageable;
+        String termo = null;
+        String situacao = null;
+
+        if (filtroForm != null) {
+            resolvedPageable = filtroForm.toPageable(pageable);
+            termo = filtroForm.getTermo();
+            situacao = filtroForm.getSituacao();
+        }
+
+        return listarPaginado(termo, situacao, resolvedPageable);
+    }
+
+    @Transactional(readOnly = true)
     public Page<ClienteResponse> listarPaginado(String termo, String situacao, Pageable pageable) {
         Long empresaId = obterEmpresaAtivaId();
 

@@ -24,12 +24,4 @@ public class ApiErrorResponse {
     private String mensagem;
     private String path;
     private List<CampoErro> errosValidacao;
-
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
-    public static class CampoErro {
-        private String campo;
-        private String mensagem;
-    }
 }

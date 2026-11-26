@@ -39,8 +39,9 @@ import ContactPhoneIcon from '@mui/icons-material/ContactPhone';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
-import { FileUploadDropzone, ArquivoInfo } from '../components/common/FileUploadDropzone';
+import { FileUploadDropzone } from '../components/common/FileUploadDropzone';
 import { CampoVisualizacao } from '../components/common/CampoVisualizacao';
+import { ClienteForm, EnderecoForm, ContatoForm } from '../types/cliente';
 import {
   ESTADOS_BR,
   formatarCpf,
@@ -54,41 +55,6 @@ import {
 
 function SlideTransition(props: SlideProps) {
   return <Slide {...props} direction="left" />;
-}
-
-interface EnderecoForm {
-  id?: number;
-  tipo: string;
-  cep: string;
-  logradouro: string;
-  numero: string;
-  complemento: string;
-  bairro: string;
-  cidade: string;
-  uf: string;
-}
-
-interface ContatoForm {
-  id?: number;
-  nome: string;
-  cargo: string;
-  email: string;
-  telefone: string;
-}
-
-interface ClienteForm {
-  tipoPessoa: 'PF' | 'PJ';
-  documento: string;
-  nomeRazaoSocial: string;
-  nomeFantasia: string;
-  inscricaoEstadual: string;
-  dataNascimento: string;
-  email: string;
-  telefone: string;
-  arquivoId?: number | null;
-  arquivo?: ArquivoInfo | null;
-  enderecos: EnderecoForm[];
-  contatos: ContatoForm[];
 }
 
 const formVazio: ClienteForm = {

@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import {
   Box,
-  Typography,
   Button,
   Paper,
   Chip,
@@ -16,54 +15,21 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SearchIcon from '@mui/icons-material/Search';
-import { DataGrid, GridColDef } from '@mui/x-data-grid';
+import { GridColDef } from '@mui/x-data-grid';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { dataGridPtBR } from '../utils/dataGridPtBR';
 import { api } from '../services/api';
-import { CustomPaginationActions } from '../components/common/CustomPaginationActions';
+import { ClienteItem, SituacaoFiltro } from '../types';
+import { useTablePagination } from '../hooks/useTablePagination';
+import { AppDataTable } from '../components/table/AppDataTable';
+import { IdChip } from '../components/table/IdChip';
+import { PageHeader } from '../components/layout/PageHeader';
 import {
   formatarCnpj,
   formatarDocumento,
   formatarTelefone,
 } from '../utils/documentos';
-
-interface EndereçoForm {
-  id?: number;
-  tipo: string;
-  cep: string;
-  logradouro: string;
-  numero: string;
-  complemento: string;
-  bairro: string;
-  cidade: string;
-  uf: string;
-}
-
-interface ContatoForm {
-  id?: number;
-  nome: string;
-  cargo: string;
-  email: string;
-  telefone: string;
-}
-
-interface ClienteItem {
-  id: number;
-  tipoPessoa: 'PF' | 'PJ';
-  documento: string;
-  nomeRazaoSocial: string;
-  nomeFantasia?: string;
-  inscricaoEstadual?: string;
-  dataNascimento?: string;
-  email?: string;
-  telefone?: string;
-  situacao: string;
-  empresaId: number;
-  enderecos?: EndereçoForm[];
-  contatos?: ContatoForm[];
-}
 
 export const ClientesPage: React.FC = () => {
   const { empresaAtiva } = useAuth();
@@ -73,7 +39,7 @@ export const ClientesPage: React.FC = () => {
   const [filtroTermo, setFiltroTermo] = useState<string>(() => {
     return sessionStorage.getItem('clientes_filtro_termo') || '';
   });
-  const [filtroSituacao, setFiltroSituacao] = useState<'TODOS' | 'ATIVO' | 'INATIVO'>(() => {
+  const [filtroSituacao, setFiltroSituacao] = useState<SituacaoFiltro>(() => {
     const salvo = sessionStorage.getItem('clientes_filtro_situacao');
     if (salvo === 'ATIVO' || salvo === 'INATIVO' || salvo === 'TODOS') {
       return salvo;
@@ -81,46 +47,26 @@ export const ClientesPage: React.FC = () => {
     return 'TODOS';
   });
 
-  // Estado de paginação persistido na sessão
-  const [paginationModel, setPaginationModel] = useState<{ page: number; pageSize: number }>(() => {
-    const salvo = sessionStorage.getItem('clientes_pagination');
-    if (salvo) {
-      try {
-        return JSON.parse(salvo);
-      } catch (e) {
-        // fallback
-      }
-    }
-    return { page: 0, pageSize: 10 };
-  });
-
-  const handlePaginationModelChange = (newModel: { page: number; pageSize: number }) => {
-    // Se a consulta ainda está carregando ou a lista está vazia, o DataGrid tenta forçar page: 0
-    // Ignoramos esse reset transitório para preservar a página em que o usuário estava ao retornar
-    if ((isLoading || isFetching || listaClientes.length === 0) && newModel.page === 0 && paginationModel.page > 0) {
-      return;
-    }
-    setPaginationModel(newModel);
-    sessionStorage.setItem('clientes_pagination', JSON.stringify(newModel));
-  };
+  // Hook reutilizável de paginação com persistência em sessionStorage
+  const {
+    paginationModel,
+    handlePaginationModelChange,
+    resetPage,
+  } = useTablePagination('clientes_pagination');
 
   const handleFiltroTermoChange = (valor: string) => {
     setFiltroTermo(valor);
     sessionStorage.setItem('clientes_filtro_termo', valor);
-    const novoModel = { page: 0, pageSize: paginationModel.pageSize };
-    setPaginationModel(novoModel);
-    sessionStorage.setItem('clientes_pagination', JSON.stringify(novoModel));
+    resetPage();
   };
 
-  const handleFiltroSituacaoChange = (valor: 'TODOS' | 'ATIVO' | 'INATIVO') => {
+  const handleFiltroSituacaoChange = (valor: SituacaoFiltro) => {
     setFiltroSituacao(valor);
     sessionStorage.setItem('clientes_filtro_situacao', valor);
-    const novoModel = { page: 0, pageSize: paginationModel.pageSize };
-    setPaginationModel(novoModel);
-    sessionStorage.setItem('clientes_pagination', JSON.stringify(novoModel));
+    resetPage();
   };
 
-  // Consulta de clientes
+  // Consulta de clientes da empresa ativa
   const {
     data: clientes = [],
     isLoading,
@@ -170,8 +116,8 @@ export const ClientesPage: React.FC = () => {
     });
   }, [clientes, filtroTermo, filtroSituacao]);
 
-  // Colunas do DataGrid (sem a coluna 'Ações', conforme solicitado)
-  const columns: GridColDef[] = [
+  // Colunas do DataGrid (sem a coluna 'Ações', com ID Chip clicável)
+  const columns: GridColDef<ClienteItem>[] = [
     {
       field: 'id',
       headerName: 'ID',
@@ -179,29 +125,13 @@ export const ClientesPage: React.FC = () => {
       align: 'center',
       headerAlign: 'center',
       renderCell: (params) => (
-        <Tooltip title="Clique para visualizar o cliente">
-          <Chip
-            label={params.value}
-            size="small"
-            clickable
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/clientes/visualizar/${params.row.id}`);
-            }}
-            sx={{
-              bgcolor: '#e0e0e0',
-              color: '#424242',
-              fontWeight: 700,
-              borderRadius: '16px',
-              minWidth: 32,
-              height: 24,
-              cursor: 'pointer',
-              '&:hover': {
-                bgcolor: '#bdbdbd',
-              },
-            }}
-          />
-        </Tooltip>
+        <IdChip
+          id={params.value}
+          onClick={() => {
+            navigate(`/clientes/visualizar/${params.row.id}`);
+          }}
+          tooltip="Clique para visualizar o cliente"
+        />
       ),
     },
     {
@@ -222,7 +152,9 @@ export const ClientesPage: React.FC = () => {
       field: 'documento',
       headerName: 'CPF / CNPJ',
       width: 170,
-      valueGetter: (_, row) => formatarDocumento(row.documento, row.tipoPessoa),
+      valueGetter: (_, row) => {
+        return formatarDocumento(row.documento, row.tipoPessoa);
+      },
     },
     {
       field: 'nomeRazaoSocial',
@@ -235,23 +167,42 @@ export const ClientesPage: React.FC = () => {
       headerName: 'Nome Fantasia',
       flex: 0.9,
       minWidth: 150,
-      valueGetter: (v) => v || '-',
+      valueGetter: (v) => {
+        return v || '-';
+      },
     },
     {
       field: 'cidadeUf',
       headerName: 'Cidade / UF',
       width: 140,
       valueGetter: (_, row) => {
-        const principal = row.enderecos?.find((e: any) => e.tipo === 'PRINCIPAL') || row.enderecos?.[0];
-        return principal ? `${principal.cidade}/${principal.uf}` : '-';
+        const principal = row.enderecos?.find((e: any) => {
+          return e.tipo === 'PRINCIPAL';
+        }) || row.enderecos?.[0];
+        if (principal) {
+          return `${principal.cidade}/${principal.uf}`;
+        }
+        return '-';
       },
     },
-    { field: 'email', headerName: 'E-mail', width: 190, valueGetter: (v) => v || '-' },
+    {
+      field: 'email',
+      headerName: 'E-mail',
+      width: 190,
+      valueGetter: (v) => {
+        return v || '-';
+      },
+    },
     {
       field: 'telefone',
       headerName: 'Telefone',
       width: 140,
-      valueGetter: (v) => (v ? formatarTelefone(v) : '-'),
+      valueGetter: (v) => {
+        if (v) {
+          return formatarTelefone(v);
+        }
+        return '-';
+      },
     },
     {
       field: 'situacao',
@@ -279,27 +230,23 @@ export const ClientesPage: React.FC = () => {
 
   return (
     <Box>
-      {/* Cabeçalho */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Box>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>
-            Cadastro de Clientes
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Gestão unificada de clientes (Pessoa Física e Jurídica) com isolamento multiempresa
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Tooltip title="Recarregar clientes">
-            <IconButton onClick={() => refetch()} disabled={isLoading || isFetching} color="primary">
-              <RefreshIcon />
-            </IconButton>
-          </Tooltip>
-          <Button variant="contained" startIcon={<AddIcon />} size="medium" onClick={() => navigate('/clientes/novo')}>
-            Novo Cliente
-          </Button>
-        </Box>
-      </Box>
+      {/* Cabeçalho Reutilizável */}
+      <PageHeader
+        title="Cadastro de Clientes"
+        subtitle="Gestão unificada de clientes (Pessoa Física e Jurídica) com isolamento multiempresa"
+        actions={
+          <>
+            <Tooltip title="Recarregar clientes">
+              <IconButton onClick={() => refetch()} disabled={isLoading || isFetching} color="primary">
+                <RefreshIcon />
+              </IconButton>
+            </Tooltip>
+            <Button variant="contained" startIcon={<AddIcon />} size="medium" onClick={() => navigate('/clientes/novo')}>
+              Novo Cliente
+            </Button>
+          </>
+        }
+      />
 
       {/* Alerta de contexto da empresa */}
       <Alert severity="info" sx={{ mb: 2.5, alignItems: 'center' }}>
@@ -309,14 +256,12 @@ export const ClientesPage: React.FC = () => {
             ? `${empresaAtiva.nomeFantasia || empresaAtiva.razaoSocial} (CNPJ: ${formatarCnpj(empresaAtiva.cnpj)})`
             : 'Nenhuma selecionada'}
         </strong>
-        {' — '}
-        Exibindo <strong>{listaClientes.length}</strong> {listaClientes.length === 1 ? 'cliente cadastrado' : 'clientes cadastrados'}.
       </Alert>
 
       {/* Barra de Filtros */}
-      <Paper sx={{ p: 2, mb: 2.5 }} elevation={1}>
+      <Paper sx={{ p: 2, mb: 3 }} elevation={1}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={8} md={6}>
+          <Grid item xs={12} sm={8} md={9}>
             <TextField
               fullWidth
               size="small"
@@ -339,7 +284,7 @@ export const ClientesPage: React.FC = () => {
               size="small"
               label="Situação"
               value={filtroSituacao}
-              onChange={(e) => handleFiltroSituacaoChange(e.target.value as any)}
+              onChange={(e) => handleFiltroSituacaoChange(e.target.value as SituacaoFiltro)}
             >
               <MenuItem value="TODOS">Todos</MenuItem>
               <MenuItem value="ATIVO">Apenas Ativos</MenuItem>
@@ -349,60 +294,16 @@ export const ClientesPage: React.FC = () => {
         </Grid>
       </Paper>
 
-      {/* Tabela DataGrid com clique apenas no chip do ID para visualizar */}
-      <Paper sx={{ width: '100%', minHeight: 900 }} elevation={1}>
-        <DataGrid
-          autoHeight
-          rows={listaClientes}
-          columns={columns}
-          loading={isLoading || isFetching}
-          localeText={dataGridPtBR}
-          paginationModel={paginationModel}
-          onPaginationModelChange={handlePaginationModelChange}
-          sx={{
-            minHeight: 900,
-            border: 'none',
-            '& .MuiDataGrid-virtualScroller': {
-              overflowY: 'hidden',
-            },
-            '& .MuiTablePagination-toolbar': {
-              paddingLeft: 2,
-              paddingRight: 2,
-            },
-            '& .MuiTablePagination-spacer': {
-              flex: '1 1 auto',
-              order: 2,
-            },
-            '& .MuiTablePagination-selectLabel': {
-              order: 0,
-              margin: 0,
-              marginRight: 1,
-            },
-            '& .MuiTablePagination-input': {
-              order: 1,
-              marginRight: 2,
-            },
-            '& .MuiTablePagination-displayedRows': {
-              order: 3,
-              marginRight: '5px',
-            },
-            '& .MuiTablePagination-actions': {
-              order: 4,
-            },
-          }}
-          slotProps={{
-            pagination: {
-              labelRowsPerPage: 'Registros por página:',
-              ActionsComponent: CustomPaginationActions,
-            },
-          }}
-          initialState={{
-            sorting: { sortModel: [{ field: 'id', sort: 'desc' }] },
-          }}
-          pageSizeOptions={[10, 20, 50, 100]}
-          disableRowSelectionOnClick
-        />
-      </Paper>
+      {/* Tabela Reutilizável com clique apenas no Chip do ID */}
+      <AppDataTable
+        rows={listaClientes}
+        columns={columns}
+        loading={isLoading || isFetching}
+        paginationModel={paginationModel}
+        onPaginationModelChange={(model) => {
+          handlePaginationModelChange(model, isLoading || isFetching || listaClientes.length === 0);
+        }}
+      />
     </Box>
   );
 };

@@ -17,15 +17,9 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { api } from '../../services/api';
+import { ArquivoInfo } from '../../types/arquivo';
 
-export interface ArquivoInfo {
-  id: number;
-  nome: string;
-  extensao: string;
-  tipo: string;
-  tamanho: number;
-  urlDownload?: string;
-}
+export type { ArquivoInfo };
 
 interface FileUploadDropzoneProps {
   label?: string;

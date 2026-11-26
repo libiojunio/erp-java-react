@@ -25,7 +25,9 @@ public class ClienteContatoDto {
     private String telefone;
 
     public static ClienteContatoDto fromEntity(ClienteContato contato) {
-        if (contato == null) return null;
+        if (contato == null) {
+            return null;
+        }
         return ClienteContatoDto.builder()
                 .id(contato.getId())
                 .nome(contato.getNome())

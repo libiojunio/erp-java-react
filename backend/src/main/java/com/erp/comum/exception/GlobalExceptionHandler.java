@@ -1,6 +1,7 @@
 package com.erp.comum.exception;
 
 import com.erp.comum.dto.ApiErrorResponse;
+import com.erp.comum.dto.CampoErro;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -44,9 +45,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidationException(MethodArgumentNotValidException ex, HttpServletRequest request) {
-        List<ApiErrorResponse.CampoErro> erros = new ArrayList<>();
+        List<CampoErro> erros = new ArrayList<>();
         for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
-            erros.add(new ApiErrorResponse.CampoErro(fieldError.getField(), fieldError.getDefaultMessage()));
+            erros.add(new CampoErro(fieldError.getField(), fieldError.getDefaultMessage()));
         }
 
         ApiErrorResponse error = ApiErrorResponse.builder()

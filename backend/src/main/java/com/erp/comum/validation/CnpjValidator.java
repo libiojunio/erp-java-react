@@ -10,14 +10,20 @@ public final class CnpjValidator {
      * Aceita CNPJ formatado ou apenas dígitos.
      */
     public static boolean isValido(String cnpj) {
-        if (cnpj == null) return false;
+        if (cnpj == null) {
+            return false;
+        }
 
         String digits = cnpj.replaceAll("\\D", "");
 
-        if (digits.length() != 14) return false;
+        if (digits.length() != 14) {
+            return false;
+        }
 
         // Rejeita sequências de dígitos iguais conhecidas (00000000000000, 11111111111111, etc.)
-        if (digits.matches("(\\d)\\1{13}")) return false;
+        if (digits.matches("(\\d)\\1{13}")) {
+            return false;
+        }
 
         try {
             int digito1 = calcularDigito(digits.substring(0, 12), new int[]{5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2});

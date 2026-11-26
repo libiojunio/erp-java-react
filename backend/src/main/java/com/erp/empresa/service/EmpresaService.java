@@ -6,6 +6,7 @@ import com.erp.comum.exception.BusinessException;
 import com.erp.comum.exception.ResourceNotFoundException;
 import com.erp.comum.validation.CnpjValidator;
 import com.erp.empresa.domain.Empresa;
+import com.erp.empresa.dto.EmpresaFiltroForm;
 import com.erp.empresa.dto.EmpresaRequest;
 import com.erp.empresa.dto.EmpresaResponse;
 import com.erp.empresa.repository.EmpresaRepository;
@@ -34,6 +35,17 @@ public class EmpresaService {
     private final UsuarioRepository usuarioRepository;
     private final UsuarioEmpresaRepository usuarioEmpresaRepository;
     private final ArquivoService arquivoService;
+
+    @Transactional(readOnly = true)
+    public Page<EmpresaResponse> listar(EmpresaFiltroForm form) {
+        EmpresaFiltroForm filtro = form;
+        if (filtro == null) {
+            filtro = new EmpresaFiltroForm();
+        }
+        log.info("Listando empresas com formulário: {}", filtro);
+        return empresaRepository.buscarComFiltros(filtro.getFiltro(), filtro.getSituacao(), filtro.toPageable())
+                .map(this::carregarResponse);
+    }
 
     @Transactional(readOnly = true)
     public Page<EmpresaResponse> listar(String filtro, String situacao, Pageable pageable) {
@@ -226,7 +238,9 @@ public class EmpresaService {
     }
 
     private String normalizarCnpj(String cnpj) {
-        if (cnpj == null) return "";
+        if (cnpj == null) {
+            return "";
+        }
         return cnpj.replaceAll("\\D", "");
     }
 

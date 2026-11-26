@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -25,13 +26,12 @@ public class ClienteController {
     private final ClienteService clienteService;
 
     @GetMapping
-    @Operation(summary = "Lista clientes da empresa ativa com suporte a busca, filtro por situação e paginação")
+    @Operation(summary = "Lista clientes da empresa ativa com suporte a formulário de busca, filtro por situação e paginação")
     public ResponseEntity<ApiResponse<Page<ClienteResponse>>> listarClientes(
-            @RequestParam(required = false) String termo,
-            @RequestParam(required = false) String situacao,
+            @ParameterObject ClienteFiltroForm filtroForm,
             @PageableDefault(size = 10, sort = "id", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
 
-        Page<ClienteResponse> pagina = clienteService.listarPaginado(termo, situacao, pageable);
+        Page<ClienteResponse> pagina = clienteService.listarPaginado(filtroForm, pageable);
         return ResponseEntity.ok(ApiResponse.sucesso(pagina));
     }
 
