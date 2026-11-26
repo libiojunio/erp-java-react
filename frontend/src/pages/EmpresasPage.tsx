@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
@@ -49,6 +49,29 @@ function formatarCnpj(cnpj: string): string {
 
 export const EmpresasPage: React.FC = () => {
   const navigate = useNavigate();
+
+  // Estado de paginação persistido na sessão
+  const [paginationModel, setPaginationModel] = useState<{ page: number; pageSize: number }>(() => {
+    const salvo = sessionStorage.getItem('empresas_pagination');
+    if (salvo) {
+      try {
+        return JSON.parse(salvo);
+      } catch (e) {
+        // fallback
+      }
+    }
+    return { page: 0, pageSize: 10 };
+  });
+
+  const handlePaginationModelChange = (newModel: { page: number; pageSize: number }) => {
+    // Se a consulta ainda está carregando ou a lista está vazia, o DataGrid tenta forçar page: 0
+    // Ignoramos esse reset transitório para preservar a página em que o usuário estava ao retornar
+    if ((isLoading || isFetching || empresas.length === 0) && newModel.page === 0 && paginationModel.page > 0) {
+      return;
+    }
+    setPaginationModel(newModel);
+    sessionStorage.setItem('empresas_pagination', JSON.stringify(newModel));
+  };
 
   // Consulta das empresas cadastradas
   const { data: empresas = [], isLoading, isFetching, refetch } = useQuery<EmpresaItem[]>({
@@ -188,6 +211,8 @@ export const EmpresasPage: React.FC = () => {
           columns={columns}
           loading={isLoading || isFetching}
           localeText={dataGridPtBR}
+          paginationModel={paginationModel}
+          onPaginationModelChange={handlePaginationModelChange}
           onRowClick={(params) => navigate(`/empresas/visualizar/${params.row.id}`)}
           sx={{
             border: 'none',
@@ -231,7 +256,6 @@ export const EmpresasPage: React.FC = () => {
           }}
           initialState={{
             sorting: { sortModel: [{ field: 'id', sort: 'desc' }] },
-            pagination: { paginationModel: { pageSize: 10 } },
           }}
           pageSizeOptions={[10, 20, 50, 100, 200]}
           disableRowSelectionOnClick

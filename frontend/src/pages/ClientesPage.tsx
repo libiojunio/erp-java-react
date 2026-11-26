@@ -69,9 +69,56 @@ export const ClientesPage: React.FC = () => {
   const { empresaAtiva } = useAuth();
   const navigate = useNavigate();
 
-  // Estados de filtros
-  const [filtroTermo, setFiltroTermo] = useState('');
-  const [filtroSituacao, setFiltroSituacao] = useState<'TODOS' | 'ATIVO' | 'INATIVO'>('TODOS');
+  // Estados de filtros persistidos na sessão
+  const [filtroTermo, setFiltroTermo] = useState<string>(() => {
+    return sessionStorage.getItem('clientes_filtro_termo') || '';
+  });
+  const [filtroSituacao, setFiltroSituacao] = useState<'TODOS' | 'ATIVO' | 'INATIVO'>(() => {
+    const salvo = sessionStorage.getItem('clientes_filtro_situacao');
+    if (salvo === 'ATIVO' || salvo === 'INATIVO' || salvo === 'TODOS') {
+      return salvo;
+    }
+    return 'TODOS';
+  });
+
+  // Estado de paginação persistido na sessão
+  const [paginationModel, setPaginationModel] = useState<{ page: number; pageSize: number }>(() => {
+    const salvo = sessionStorage.getItem('clientes_pagination');
+    if (salvo) {
+      try {
+        return JSON.parse(salvo);
+      } catch (e) {
+        // fallback
+      }
+    }
+    return { page: 0, pageSize: 10 };
+  });
+
+  const handlePaginationModelChange = (newModel: { page: number; pageSize: number }) => {
+    // Se a consulta ainda está carregando ou a lista está vazia, o DataGrid tenta forçar page: 0
+    // Ignoramos esse reset transitório para preservar a página em que o usuário estava ao retornar
+    if ((isLoading || isFetching || listaClientes.length === 0) && newModel.page === 0 && paginationModel.page > 0) {
+      return;
+    }
+    setPaginationModel(newModel);
+    sessionStorage.setItem('clientes_pagination', JSON.stringify(newModel));
+  };
+
+  const handleFiltroTermoChange = (valor: string) => {
+    setFiltroTermo(valor);
+    sessionStorage.setItem('clientes_filtro_termo', valor);
+    const novoModel = { page: 0, pageSize: paginationModel.pageSize };
+    setPaginationModel(novoModel);
+    sessionStorage.setItem('clientes_pagination', JSON.stringify(novoModel));
+  };
+
+  const handleFiltroSituacaoChange = (valor: 'TODOS' | 'ATIVO' | 'INATIVO') => {
+    setFiltroSituacao(valor);
+    sessionStorage.setItem('clientes_filtro_situacao', valor);
+    const novoModel = { page: 0, pageSize: paginationModel.pageSize };
+    setPaginationModel(novoModel);
+    sessionStorage.setItem('clientes_pagination', JSON.stringify(novoModel));
+  };
 
   // Consulta de clientes
   const {
@@ -275,7 +322,7 @@ export const ClientesPage: React.FC = () => {
               size="small"
               placeholder="Pesquisar por Razão Social, Nome Fantasia ou CPF/CNPJ..."
               value={filtroTermo}
-              onChange={(e) => setFiltroTermo(e.target.value)}
+              onChange={(e) => handleFiltroTermoChange(e.target.value)}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -292,7 +339,7 @@ export const ClientesPage: React.FC = () => {
               size="small"
               label="Situação"
               value={filtroSituacao}
-              onChange={(e) => setFiltroSituacao(e.target.value as any)}
+              onChange={(e) => handleFiltroSituacaoChange(e.target.value as any)}
             >
               <MenuItem value="TODOS">Todos</MenuItem>
               <MenuItem value="ATIVO">Apenas Ativos</MenuItem>
@@ -310,6 +357,8 @@ export const ClientesPage: React.FC = () => {
           columns={columns}
           loading={isLoading || isFetching}
           localeText={dataGridPtBR}
+          paginationModel={paginationModel}
+          onPaginationModelChange={handlePaginationModelChange}
           onRowClick={(params) => navigate(`/clientes/visualizar/${params.row.id}`)}
           sx={{
             border: 'none',
@@ -353,7 +402,6 @@ export const ClientesPage: React.FC = () => {
           }}
           initialState={{
             sorting: { sortModel: [{ field: 'id', sort: 'desc' }] },
-            pagination: { paginationModel: { pageSize: 10 } },
           }}
           pageSizeOptions={[10, 20, 50, 100, 200]}
           disableRowSelectionOnClick

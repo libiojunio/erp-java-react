@@ -490,7 +490,7 @@ export const ClienteDetalhesPage: React.FC = () => {
       <Paper sx={{ p: 2.5, mb: 3 }} elevation={1}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <IconButton color="primary" onClick={() => navigate('/clientes')} title="Voltar para Clientes">
+            <IconButton color="primary" onClick={() => navigate(-1)} title="Voltar para a tela anterior">
               <ArrowBackIcon />
             </IconButton>
             <Box>
