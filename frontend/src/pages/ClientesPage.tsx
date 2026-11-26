@@ -327,7 +327,7 @@ export const ClientesPage: React.FC<ClientesPageProps> = ({
           setPesquisaHabilitada(true);
           refetch();
         }}
-        iniciarPesquisando={false}
+        iniciarPesquisando={iniciarPesquisando}
       />
     </Box>
   );
