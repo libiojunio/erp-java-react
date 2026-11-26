@@ -24,6 +24,6 @@ public class EmpresaFiltroForm extends PaginacaoFiltroForm {
     private String situacao;
 
     public Pageable toPageable() {
-        return toPageable(0, 50, "id", "DESC");
+        return toPageable(0, 10, "id", "DESC");
     }
 }

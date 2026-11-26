@@ -2,19 +2,15 @@ import React, { useState, useMemo } from 'react';
 import {
   Box,
   Button,
-  Paper,
   Chip,
   Alert,
   IconButton,
   Tooltip,
   TextField,
-  Grid,
   MenuItem,
-  InputAdornment,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import SearchIcon from '@mui/icons-material/Search';
 import { GridColDef } from '@mui/x-data-grid';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -31,7 +27,13 @@ import {
   formatarTelefone,
 } from '../utils/documentos';
 
-export const ClientesPage: React.FC = () => {
+interface ClientesPageProps {
+  iniciarPesquisando?: boolean;
+}
+
+export const ClientesPage: React.FC<ClientesPageProps> = ({
+  iniciarPesquisando = true,
+}) => {
   const { empresaAtiva } = useAuth();
   const navigate = useNavigate();
 
@@ -47,17 +49,19 @@ export const ClientesPage: React.FC = () => {
     return 'TODOS';
   });
 
-  // Hook reutilizável de paginação com persistência em sessionStorage
+  // Estado para controlar se a busca no backend está habilitada
+  const [pesquisaHabilitada, setPesquisaHabilitada] = useState<boolean>(iniciarPesquisando);
+
+  // Hook de paginação persistida com padrão de 10 registros
   const {
     paginationModel,
     handlePaginationModelChange,
     resetPage,
-  } = useTablePagination('clientes_pagination');
+  } = useTablePagination('clientes_pagination', 10);
 
   const handleFiltroTermoChange = (valor: string) => {
     setFiltroTermo(valor);
     sessionStorage.setItem('clientes_filtro_termo', valor);
-    resetPage();
   };
 
   const handleFiltroSituacaoChange = (valor: SituacaoFiltro) => {
@@ -66,37 +70,55 @@ export const ClientesPage: React.FC = () => {
     resetPage();
   };
 
-  // Consulta de clientes da empresa ativa
+  // Consulta paginada com o backend
   const {
-    data: clientes = [],
+    data: responseDados,
     isLoading,
     isFetching,
     refetch,
-  } = useQuery<ClienteItem[]>({
-    queryKey: ['clientes', empresaAtiva?.id],
+  } = useQuery({
+    queryKey: [
+      'clientes',
+      empresaAtiva?.id,
+      paginationModel.page,
+      paginationModel.pageSize,
+    ],
     queryFn: async () => {
-      const response = await api.get('/clientes?sortProperty=id&sortDirection=DESC');
-      const dados = response.data?.dados;
-      if (Array.isArray(dados)) {
-        return dados;
-      }
-      if (dados && Array.isArray(dados.content)) {
-        return dados.content;
-      }
-      if (dados && Array.isArray(dados.conteudo)) {
-        return dados.conteudo;
-      }
-      return [];
+      const response = await api.get(
+        `/clientes?page=${paginationModel.page}&size=${paginationModel.pageSize}&sortProperty=id&sortDirection=DESC`
+      );
+      return response.data?.dados;
     },
-    enabled: !!empresaAtiva,
+    enabled: !!empresaAtiva && pesquisaHabilitada,
   });
 
-  // Filtro em memória
-  const listaClientes = useMemo(() => {
-    if (!Array.isArray(clientes)) {
-      return [];
+  // Extração das linhas da página atual
+  const clientesDaPagina = useMemo<ClienteItem[]>(() => {
+    const dados = responseDados;
+    if (Array.isArray(dados)) {
+      return dados;
     }
-    return clientes.filter((c) => {
+    if (dados && Array.isArray(dados.content)) {
+      return dados.content;
+    }
+    if (dados && Array.isArray(dados.conteudo)) {
+      return dados.conteudo;
+    }
+    return [];
+  }, [responseDados]);
+
+  // Total de registros no backend para controle da barra de paginação do servidor
+  const totalClientes = useMemo<number>(() => {
+    const dados = responseDados;
+    if (dados && typeof dados.totalElements === 'number') {
+      return dados.totalElements;
+    }
+    return clientesDaPagina.length;
+  }, [responseDados, clientesDaPagina.length]);
+
+  // Filtro local na tabela (pesquisa na tabela toda de forma local)
+  const listaClientesFiltrados = useMemo(() => {
+    return clientesDaPagina.filter((c) => {
       if (filtroSituacao !== 'TODOS' && c.situacao !== filtroSituacao) {
         return false;
       }
@@ -114,9 +136,9 @@ export const ClientesPage: React.FC = () => {
       }
       return true;
     });
-  }, [clientes, filtroTermo, filtroSituacao]);
+  }, [clientesDaPagina, filtroTermo, filtroSituacao]);
 
-  // Colunas do DataGrid (sem a coluna 'Ações', com ID Chip clicável)
+  // Colunas do DataGrid (com ID Chip clicável)
   const columns: GridColDef<ClienteItem>[] = [
     {
       field: 'id',
@@ -237,11 +259,24 @@ export const ClientesPage: React.FC = () => {
         actions={
           <>
             <Tooltip title="Recarregar clientes">
-              <IconButton onClick={() => refetch()} disabled={isLoading || isFetching} color="primary">
+              <IconButton
+                onClick={() => {
+                  refetch();
+                }}
+                disabled={isLoading || isFetching}
+                color="primary"
+              >
                 <RefreshIcon />
               </IconButton>
             </Tooltip>
-            <Button variant="contained" startIcon={<AddIcon />} size="medium" onClick={() => navigate('/clientes/novo')}>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              size="medium"
+              onClick={() => {
+                navigate('/clientes/novo');
+              }}
+            >
               Novo Cliente
             </Button>
           </>
@@ -258,51 +293,41 @@ export const ClientesPage: React.FC = () => {
         </strong>
       </Alert>
 
-      {/* Barra de Filtros */}
-      <Paper sx={{ p: 2, mb: 3 }} elevation={1}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={8} md={9}>
-            <TextField
-              fullWidth
-              size="small"
-              placeholder="Pesquisar por Razão Social, Nome Fantasia ou CPF/CNPJ..."
-              value={filtroTermo}
-              onChange={(e) => handleFiltroTermoChange(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon color="action" />
-                  </InputAdornment>
-                ),
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={4} md={3}>
-            <TextField
-              select
-              fullWidth
-              size="small"
-              label="Situação"
-              value={filtroSituacao}
-              onChange={(e) => handleFiltroSituacaoChange(e.target.value as SituacaoFiltro)}
-            >
-              <MenuItem value="TODOS">Todos</MenuItem>
-              <MenuItem value="ATIVO">Apenas Ativos</MenuItem>
-              <MenuItem value="INATIVO">Apenas Inativos</MenuItem>
-            </TextField>
-          </Grid>
-        </Grid>
-      </Paper>
-
-      {/* Tabela Reutilizável com clique apenas no Chip do ID */}
+      {/* Tabela Reutilizável com Barra de Pesquisa Padronizada, Paginação com Backend e iniciarPesquisando */}
       <AppDataTable
-        rows={listaClientes}
+        rows={listaClientesFiltrados}
         columns={columns}
         loading={isLoading || isFetching}
+        rowCount={totalClientes}
+        paginationMode="server"
         paginationModel={paginationModel}
         onPaginationModelChange={(model) => {
-          handlePaginationModelChange(model, isLoading || isFetching || listaClientes.length === 0);
+          handlePaginationModelChange(model, isLoading || isFetching || clientesDaPagina.length === 0);
         }}
+        searchPlaceholder="Pesquisar por Razão Social, Nome Fantasia ou CPF/CNPJ..."
+        searchValue={filtroTermo}
+        onSearchChange={handleFiltroTermoChange}
+        extraFilters={
+          <TextField
+            select
+            fullWidth
+            size="small"
+            label="Situação"
+            value={filtroSituacao}
+            onChange={(e) => {
+              handleFiltroSituacaoChange(e.target.value as SituacaoFiltro);
+            }}
+          >
+            <MenuItem value="TODOS">Todos</MenuItem>
+            <MenuItem value="ATIVO">Apenas Ativos</MenuItem>
+            <MenuItem value="INATIVO">Apenas Inativos</MenuItem>
+          </TextField>
+        }
+        onPesquisar={() => {
+          setPesquisaHabilitada(true);
+          refetch();
+        }}
+        iniciarPesquisando={false}
       />
     </Box>
   );

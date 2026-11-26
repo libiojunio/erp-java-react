@@ -32,9 +32,9 @@ public class EmpresaController {
 
     @GetMapping
     @Operation(summary = "Lista todas as empresas cadastradas com suporte a formulário de busca e paginação")
-    public ResponseEntity<ApiResponse<List<EmpresaResponse>>> listar(@ParameterObject EmpresaFiltroForm filtroForm) {
+    public ResponseEntity<ApiResponse<Page<EmpresaResponse>>> listar(@ParameterObject EmpresaFiltroForm filtroForm) {
         Page<EmpresaResponse> pageResult = empresaService.listar(filtroForm);
-        return ResponseEntity.ok(ApiResponse.sucesso(pageResult.getContent()));
+        return ResponseEntity.ok(ApiResponse.sucesso(pageResult));
     }
 
     @GetMapping("/{id}")
