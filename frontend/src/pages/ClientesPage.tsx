@@ -349,8 +349,8 @@ export const ClientesPage: React.FC = () => {
         </Grid>
       </Paper>
 
-      {/* Tabela DataGrid com clique na linha para visualizar */}
-      <Paper sx={{ width: '100%' }} elevation={1}>
+      {/* Tabela DataGrid com clique apenas no chip do ID para visualizar */}
+      <Paper sx={{ width: '100%', minHeight: 900 }} elevation={1}>
         <DataGrid
           autoHeight
           rows={listaClientes}
@@ -359,20 +359,15 @@ export const ClientesPage: React.FC = () => {
           localeText={dataGridPtBR}
           paginationModel={paginationModel}
           onPaginationModelChange={handlePaginationModelChange}
-          onRowClick={(params) => navigate(`/clientes/visualizar/${params.row.id}`)}
           sx={{
+            minHeight: 900,
             border: 'none',
             '& .MuiDataGrid-virtualScroller': {
               overflowY: 'hidden',
             },
-            '& .MuiDataGrid-row': {
-              cursor: 'pointer',
-              '&:hover': {
-                bgcolor: 'action.hover',
-              },
-            },
             '& .MuiTablePagination-toolbar': {
               paddingLeft: 2,
+              paddingRight: 2,
             },
             '& .MuiTablePagination-spacer': {
               flex: '1 1 auto',
@@ -389,6 +384,7 @@ export const ClientesPage: React.FC = () => {
             },
             '& .MuiTablePagination-displayedRows': {
               order: 3,
+              marginRight: '5px',
             },
             '& .MuiTablePagination-actions': {
               order: 4,
@@ -403,7 +399,7 @@ export const ClientesPage: React.FC = () => {
           initialState={{
             sorting: { sortModel: [{ field: 'id', sort: 'desc' }] },
           }}
-          pageSizeOptions={[10, 20, 50, 100, 200]}
+          pageSizeOptions={[10, 20, 50, 100]}
           disableRowSelectionOnClick
         />
       </Paper>

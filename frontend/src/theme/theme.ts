@@ -72,6 +72,7 @@ export const theme = createTheme({
       styleOverrides: {
         toolbar: {
           paddingLeft: '16px',
+          paddingRight: '16px',
         },
         spacer: {
           flex: '1 1 auto',
@@ -88,6 +89,7 @@ export const theme = createTheme({
         },
         displayedRows: {
           order: 3,
+          marginRight: '5px',
         },
         actions: {
           order: 4,
